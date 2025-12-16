@@ -1,0 +1,292 @@
+﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <script src="jquery-3.7.1.min.js"></script>
+    <link href="/static/fontawesome-free-7.1.0-web/css/all.css" rel="stylesheet" />
+  <title>Social-Scoring-Experiment</title>
+  <style>
+    :root {
+      --bg: #daa2a6;
+      --card: #e4bbbf;
+      --border: #e5e7eb;
+      --text: white;
+      --muted: #6b7280;
+      --primary: #00bd21;
+      --danger: #ef4444;
+      --radius: 12px;
+    }
+    body {
+      margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji";
+      background: var(--bg); color: var(--text);
+    }
+    .container {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 24px;
+      padding: 24px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .profile {
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
+    }
+    .avatar {
+      width: 120px; height: 120px; border-radius: 50%;
+      background: #e0e7ff; display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 48px; color: #1f2937; user-select: none;
+      overflow: hidden;
+    }
+    .avatar img { width: 100%; height: 100%; object-fit: cover; display: none; }
+    .profile input {
+      width: 100%; font-size: 16px; padding: 10px 12px;
+      border: 1px solid var(--border); border-radius: 8px; background: #fafafa;
+    }
+    h2 { margin: 0 0 12px 0; font-size: 18px; }
+    .table-card h2 { margin-bottom: 16px; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      text-align: left; font-weight: 600; font-size: 14px; color: var(--muted);
+      padding: 10px 12px; border-bottom: 1px solid var(--border);
+    }
+    tbody td {
+      padding: 10px; border-bottom: 1px solid var(--border); vertical-align: middle;
+    }
+    .row {
+      display: grid; grid-template-columns: 72px 300px 120px 220px; align-items: center; font-size: 30px;
+    }
+    .person-avatar {
+      width: 39px; height: 39px; border-radius: 50%; background: #dbeafe;
+      display: flex; align-items: center; justify-content: center; font-weight: 700; color: #1f2937;
+      overflow: hidden;
+    }
+    .person-avatar img { width: 100%; height: 100%; object-fit: cover; display: none; }
+    .score {
+      font-variant-numeric: tabular-nums; font-weight: 600;
+    }
+    .btn {
+      border: none; border-radius: 10px; padding: 8px 20px; font-size: 18px; font-weight: 700;
+      cursor: pointer; transition: transform 0.02s ease-in-out; margin-left: 10px; margin-right: 10px;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-plus { background: var(--primary); color: white; }
+    .btn-minus { background: var(--danger); color: white; }
+    .btn-logout {background: var(--bg); color: white}
+    .actions { display: flex; align-items: center; }
+    .footer-note { color: var(--muted); font-size: 12px; margin-top: 8px; }
+    @media (max-width: 900px) {
+      .container { grid-template-columns: 1fr; }
+      .row { grid-template-columns: 56px 1fr 100px 180px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Linke Seite: Profil -->
+    <div class="card profile-card">
+      <h2>Dein Profil</h2>
+      <div class="profile">
+        <div class="avatar" id="userAvatar" title="Nutzer-Foto">
+          <!-- Falls du ein Foto einbindest, setze src und style.display = 'block' -->
+          <img id="userAvatarImg" alt="Avatar">
+          <span id="userInitials">DU</span>
+        </div>
+        <span style="font-size: 30px" id="userName">{{ display_name }}</span>
+        <span style="font-size: 30px" id="userScore">{{ user_score }}</span>
+          <div id="votesContainer">
+
+          </div>
+        <p>
+           <button class="btn btn-logout" id="logoutButton" onclick="location.href='/logout';">Logout</button>
+        </p>
+      </div>
+    </div>
+
+    <!-- Rechte Seite: Tabelle -->
+    <div class="card table-card">
+      <h2>Highscore-Liste</h2>
+      <table aria-label="Highscore-Liste">
+        <thead>
+          <tr class="row">
+            <th>Avatar</th>
+            <th>Name</th>
+            <th>Score</th>
+            <th style>erhöhen / verringern</th>
+          </tr>
+        </thead>
+        <tbody id="personsBody"></tbody>
+      </table>
+      <p class="footer-note">Hinweis: Die Liste wird live aktualisiert.</p>
+    </div>
+  </div>
+
+  <script>
+    const personsBody = document.getElementById('personsBody');
+    let currentVersion = 0;
+
+    // Ein einfaches, datenschutzfreundliches Platzhalter-Bild als Data-URL (SVG)
+    const placeholderDataUrl = 'data:image/svg+xml;utf8,' +
+      encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64">' +
+        '<rect width="100%" height="100%" rx="32" fill="#dbeafe"/>' +
+        '<text x="50%" y="52%" text-anchor="middle" font-size="22" font-family="system-ui" fill="#1f2937">👤</text>' +
+      '</svg>');
+
+    function initials(name) {
+      if (!name) return '??';
+      const parts = name.trim().split(/\s+/);
+      const a = parts[0]?.[0] || '';
+      const b = parts[1]?.[0] || '';
+      return (a + b).toUpperCase();
+    }
+
+    function renderPersons(persons) {
+      personsBody.innerHTML = '';
+
+      persons.sort(function(a, b) {return b['score']-a['score']});
+
+      for (const p of persons) {
+        const tr = document.createElement('tr');
+        tr.className = 'row';
+
+        // Foto-Zelle
+        const tdPhoto = document.createElement('td');
+        const avatar = document.createElement('div');
+        avatar.className = 'person-avatar';
+        const img = document.createElement('img');
+        img.alt = 'Foto';
+        img.src = p.photo || placeholderDataUrl;
+        img.style.display = 'block';
+        avatar.appendChild(img);
+        tdPhoto.appendChild(avatar);
+
+        // Name-Zelle
+        const tdName = document.createElement('td');
+        tdName.textContent = p.name;
+
+        // Score-Zelle
+        const tdScore = document.createElement('td');
+        const scoreSpan = document.createElement('span');
+        scoreSpan.className = 'score';
+        scoreSpan.textContent = Number(p.score).toFixed(1);
+        tdScore.appendChild(scoreSpan);
+
+        // TODO alle "tuuut" ersetzen durch wirkliche Message
+
+        // Aktionen-Zelle
+        const tdActions = document.createElement('td');
+        tdActions.className = 'actions';
+        const btnPlus = document.createElement('button');
+        btnPlus.className = 'btn btn-plus';
+        btnPlus.textContent = '+';
+        btnPlus.addEventListener('click', () => vote(p.id, 'inc', "tuuut"));
+
+        const btnPlusMessage = document.createElement('button');
+        btnPlusMessage.className = 'btn btn-plus';
+        btnPlusMessage.style.display = 'inline-flex';
+        btnPlusMessage.style.alignItems = 'center';
+        btnPlusMessage.style.gap = '8px';
+        const textNode = document.createTextNode('+');
+        const icon = document.createElement('i');
+        icon.className = 'fa-regular fa-message';
+        btnPlusMessage.appendChild(textNode);
+        btnPlusMessage.appendChild(icon);
+        btnPlusMessage.addEventListener('click', () => vote(p.id, 'inc', "tuuut"));
+
+        const btnMinusMessage = document.createElement('button');
+        btnMinusMessage.className = 'btn btn-minus';
+        btnMinusMessage.style.display = 'inline-flex';
+        btnMinusMessage.style.alignItems = 'center';
+        btnMinusMessage.style.gap = '8px';
+        const textNode2 = document.createTextNode('-');
+        const icon2 = document.createElement('i');
+        icon2.className = 'fa-regular fa-message';
+        btnMinusMessage.appendChild(textNode2);
+        btnMinusMessage.appendChild(icon2);
+        btnMinusMessage.addEventListener('click', () => vote(p.id, 'dec', "tuuut"));
+
+
+        btnMinusMessage.addEventListener('click', () => vote(p.id, 'dec', "tuuut"));
+
+        const btnMinus = document.createElement('button');
+        btnMinus.className = 'btn btn-minus';
+        btnMinus.textContent = '−';
+        btnMinus.addEventListener('click', () => vote(p.id, 'dec', "tuuut"));
+
+        tdActions.appendChild(btnPlus);
+        tdActions.appendChild(btnPlusMessage);
+        tdActions.appendChild(btnMinusMessage);
+        tdActions.appendChild(btnMinus);
+
+        tr.appendChild(tdPhoto);
+        tr.appendChild(tdName);
+        tr.appendChild(tdScore);
+        tr.appendChild(tdActions);
+        personsBody.appendChild(tr);
+      }
+    }
+
+    async function initialLoad() {
+      const res = await fetch('/api/persons');
+      const data = await res.json();
+      currentVersion = data.version || 0;
+      renderPersons(data.persons || []);
+    }
+
+  async function vote(id, operation, comment) {
+    try {
+        let body = new URLSearchParams();
+        body.append("comment", comment);
+        const res = await fetch(`/api/persons/${id}/${operation}`, { method: 'POST',
+          body: body });
+      if (res.status === 401) { window.location.href = '/login'; return; }
+      if (res.status === 429) {
+        const data = await res.json();
+        const secs = data.retry_after_seconds ?? 0;
+        const mins = Math.ceil(secs / 60);
+        alert((data.error || 'Cooldown aktiv.') + ` Versuche es in ca. ${mins} Minute(n) erneut.`);
+        return;
+      }
+      if (!res.ok) return;
+      const data = await res.json();
+      currentVersion = data.version || currentVersion;
+    } catch (e) {
+      console.error('Vote-Fehler', e);
+    }
+  }
+
+    async function pollLoop() {
+      try {
+        const res = await fetch(`/api/updates?since=${encodeURIComponent(currentVersion)}`, {
+          // Keine speziellen Optionen nötig; Server hält bis zu ~25s die Verbindung
+        });
+        const data = await res.json();
+        if (data.changed) {
+          currentVersion = data.version || currentVersion;
+          renderPersons(data.persons || []);
+        } else {
+          // Keine Änderung, aber Version bleibt gleich; einfach weiterpolling
+          currentVersion = data.version || currentVersion;
+        }
+      } catch (e) {
+        console.warn('Long-Polling unterbrochen, versuche erneut...', e);
+        await new Promise(r => setTimeout(r, 1000));
+      } finally {
+        // Sofort wieder starten, um "live" zu bleiben
+        pollLoop();
+      }
+    }
+
+    // Start
+    (async function () {
+      await initialLoad();
+      pollLoop();
+    })();
+  </script>
+</body>
+</html>

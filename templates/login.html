@@ -1,0 +1,46 @@
+﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Login zum Social-Scoring-Experiment</title>
+    <script src="jquery-3.7.1.min.js"></script>
+  <style>
+    :root { --bg: #daa2a6; --card:#e4bbbf; --border:#e5e7eb; --text:white; --muted:#6b7280; --primary:#2563eb; --radius:12px; }
+    body { margin:0; font-family:system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; background:var(--bg); color:var(--text); }
+    .wrap { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
+    .card { width:100%; max-width:380px; background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:24px; box-shadow:0 1px 2px rgba(0,0,0,0.04); }
+    h1 { margin:0 0 12px 0; font-size:20px; }
+    .muted { color:var(--muted); font-size:14px; margin-bottom:16px; }
+    label { display:block; font-size:14px; margin-bottom:6px; }
+    input { width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px; font-size:16px; background:#fafafa; }
+    .field { margin-bottom:14px; }
+    .btn { width:100%; background:var(--bg); color:#fff; border:solid; border-radius:10px; padding:10px 16px; font-size:16px; font-weight:700; cursor:pointer; }
+    .error { color:#b91c1c; background:#fee2e2; border:1px solid #fecaca; padding:10px 12px; border-radius:8px; margin-bottom:12px; font-size:14px; }
+    .hint { font-size:12px; color:var(--muted); margin-top:8px; }
+    code { background:#f3f4f6; padding:2px 4px; border-radius:4px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Anmelden</h1>
+      <p class="muted">Bitte einloggen, um zum Scoring-Menü zu gelangen</p>
+      {% if error %}
+      <div class="error">{{ error }}</div>
+      {% endif %}
+      <form method="post" action="{{ url_for('render_login', next=request.args.get('next')) }}">
+        <div class="field">
+          <label for="username">Benutzername</label>
+          <input id="username" name="username" autocomplete="username" required placeholder="Benutzername" />
+        </div>
+        <div class="field">
+          <label for="password">Passwort</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" required placeholder="Passwort" />
+        </div>
+        <button class="btn" type="submit">Einloggen</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>
