@@ -75,8 +75,46 @@
       cursor: pointer; transition: transform 0.02s ease-in-out; margin-left: 10px; margin-right: 10px;
     }
     .btn:active { transform: scale(0.98); }
+    .btn:hover { background: rgba(237, 163, 251, 0.85); }
+    .btn:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(37,99,235,.35), 0 2px 8px rgba(0,0,0,.15);
+    }
     .btn-plus { background: var(--primary); color: white; }
     .btn-minus { background: var(--danger); color: white; }
+    .btn-send { appearance: none;
+        background: var(--bg);
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        padding: 10px 14px;
+        font-weight: 600;
+        line-height: 1.2;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        cursor: pointer;
+        user-select: none;
+        text-decoration: none;
+        box-shadow: 0 2px 8px rgba(0,0,0,.15);
+        transition: background-color .2s ease, box-shadow .2s ease, transform .03s ease; }
+    .btn-cancel { appearance: none;
+        background: transparent;
+        color: #334155;
+        border: 1px solid #64748b;
+        border-radius: 10px;
+        padding: 10px 14px;
+        font-weight: 600;
+        line-height: 1.2;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        cursor: pointer;
+        user-select: none;
+        text-decoration: none;
+        transition: background-color .2s ease, color .2s ease, transform .03s ease, box-shadow .2s ease; }
     .btn-logout {background: var(--bg); color: white}
     .actions { display: flex; align-items: center; }
     .footer-note { color: var(--muted); font-size: 12px; margin-top: 8px; }
@@ -89,11 +127,11 @@
         display: none;
         position: fixed;
         inset: 0;
-        background: rgba(0, 0, 0, .35);
+        background: rgba(0, 0, 0, .15);
         z-index: 1000;
     }
     .modal__dialog {
-        background: #fff;
+        background: var(--card);
         border-radius: 12px;
         padding: 16px;
         width: min(600px, 90vw);
@@ -109,18 +147,16 @@
 <!-- Vorexistierende Maske; wird per jQuery ein-/ausgeblendet -->
 <div id="inputModal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modalTitle">
     <div class="modal__dialog" role="document">
-        <h2 id="modalTitle">Dein Text</h2>
+        <h2 id="modalTitle"></h2>
         <form id="inputForm">
             <textarea id="inputText" rows="6" placeholder="Schreib etwas …"></textarea>
             <div class="comment-actions">
-                <button type="button" id="cancelBtn">Abbrechen</button>
-                <button type="submit">Senden</button>
+                <button class="btn btn-cancel" type="button" id="cancelBtn">Abbrechen</button>
+                <button class="btn btn-send" type="submit">Senden</button>
             </div>
         </form>
     </div>
 </div>
-
-<!-- TODO div anpassen -->
 
 <div class="container">
     <!-- Linke Seite: Profil -->
@@ -229,7 +265,7 @@
         icon.className = 'fa-regular fa-message';
         btnPlusMessage.appendChild(textNode);
         btnPlusMessage.appendChild(icon);
-        btnPlusMessage.addEventListener('click', () => openModal(person.id, 'inc'));
+        btnPlusMessage.addEventListener('click', () => openModal(person.id, person.name, 'inc'));
 
         const btnMinusMessage = document.createElement('button');
         btnMinusMessage.className = 'btn btn-minus';
@@ -241,7 +277,7 @@
         icon2.className = 'fa-regular fa-message';
         btnMinusMessage.appendChild(textNode2);
         btnMinusMessage.appendChild(icon2);
-        btnMinusMessage.addEventListener('click', () => openModal(person.id, 'dec'));
+        btnMinusMessage.addEventListener('click', () => openModal(person.id, person.name, 'dec'));
 
         const btnMinus = document.createElement('button');
         btnMinus.className = 'btn btn-minus';
@@ -320,6 +356,7 @@
 
     // Alles was mit dem Comment-Fenster zu tun hat ist hier
     const $modal = $('#inputModal');
+    const $modalTitle = $('#modalTitle');
     const $form = $('#inputForm');
     const $textarea = $('#inputText');
     const $cancelBtn = $('#cancelBtn');
@@ -327,13 +364,21 @@
     let personId = null;
     let operation = null;
 
-    function openModal(pId, operator) {
+    function openModal(pId, name, operator) {
         personId = pId;
         operation = operator;
+        let operationName = "";
+        if (operation === "inc") {
+            operationName = "Upvote";
+        }
+        else {
+            operationName = "Downvote";
+        }
+        $modalTitle.text("Anonymer Kommentar zum " + operationName + " an " + name);
         lastFocus = document.activeElement;
         $textarea.val('');
         $modal.attr('aria-hidden', 'false').fadeIn(200, function() {
-            $textarea.trigger('focus');
+            $textarea.focus();
         });
     }
 

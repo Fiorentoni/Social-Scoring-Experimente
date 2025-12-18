@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "persons": [
     {
       "id": 1,
@@ -47,7 +47,7 @@
       "id": 8,
       "name": "Fynn",
       "photo": null,
-      "score": 4.0
+      "score": 3.9
     },
     {
       "id": 9,
@@ -90,6 +90,14 @@
         "dec": {
           "timestamp": "2025-12-18T10:36:29.124170Z",
           "comment": "null"
+        }
+      }
+    },
+    "8": {
+      "admin": {
+        "dec": {
+          "timestamp": "2025-12-18T11:18:30.330967Z",
+          "comment": "test"
         }
       }
     }

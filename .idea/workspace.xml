@@ -1,14 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="d56324d9-575d-4163-b727-8b0cee462ca9" name="Changes" comment="initial commit">
-      <change beforePath="$PROJECT_DIR$/.idea/Social-Scoring-Experiment.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/Social-Scoring-Experiment.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/score.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/score2025-12-16.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/score2025-12-17.json" beforeDir="false" />
+    <list default="true" id="d56324d9-575d-4163-b727-8b0cee462ca9" name="Changes" comment="add comment for message">
+      <change beforePath="$PROJECT_DIR$/score.json" beforeDir="false" afterPath="$PROJECT_DIR$/score.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/templates/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/templates/index.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/templates/jquery-3.7.1.min.js" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/templates/login.html" beforeDir="false" afterPath="$PROJECT_DIR$/templates/login.html" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -158,7 +153,7 @@
       <workItem from="1765996819893" duration="23000" />
       <workItem from="1765998019769" duration="740000" />
       <workItem from="1766005886651" duration="338000" />
-      <workItem from="1766045316350" duration="4951000" />
+      <workItem from="1766045316350" duration="7315000" />
     </task>
     <task id="LOCAL-00001" summary="initial commit">
       <option name="closed" value="true" />
@@ -168,7 +163,15 @@
       <option name="project" value="LOCAL" />
       <updated>1765927432252</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="add comment for message">
+      <option name="closed" value="true" />
+      <created>1766054242927</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1766054242927</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -187,7 +190,8 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="initial commit" />
-    <option name="LAST_COMMIT_MESSAGE" value="initial commit" />
+    <MESSAGE value="add comment for message" />
+    <option name="LAST_COMMIT_MESSAGE" value="add comment for message" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -201,7 +205,7 @@
     </breakpoint-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/Social_Scoring_Experiment$Social_Scoring_Experiment.coverage" NAME="Social-Scoring-Experiment Coverage Results" MODIFIED="1766054181759" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
+    <SUITE FILE_PATH="coverage/Social_Scoring_Experiment$Social_Scoring_Experiment.coverage" NAME="Social-Scoring-Experiment Coverage Results" MODIFIED="1766057486466" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
     <SUITE FILE_PATH="coverage/Social_Scoring_Experimente$Social_Scoring_Experiment.coverage" NAME="Social-Scoring-Experiment Coverage Results" MODIFIED="1765993497345" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/Social_Scoring_Experiment$app.coverage" NAME="app Coverage Results" MODIFIED="1765996746831" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/Abgestuerzt_App$Abgestuerzt_App.coverage" NAME="Abgestuerzt-App Coverage Results" MODIFIED="1765830950234" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
