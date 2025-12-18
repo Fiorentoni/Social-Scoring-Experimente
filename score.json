@@ -1,17 +1,17 @@
 {
-  "version": 2,
+  "version": 3,
   "persons": [
     {
       "id": 1,
       "name": "Annika",
       "photo": null,
-      "score": 4.0
+      "score": 4.1
     },
     {
       "id": 2,
       "name": "Jonas",
       "photo": null,
-      "score": 4.0
+      "score": 3.9
     },
     {
       "id": 3,
@@ -35,7 +35,7 @@
       "id": 6,
       "name": "Anna-Lena",
       "photo": null,
-      "score": 4.0
+      "score": 3.9
     },
     {
       "id": 7,
@@ -72,12 +72,24 @@
     "1": {
       "admin": {
         "inc": {
-          "timestamp": "2025-12-17T18:34:21.140419Z",
-          "comment": "tuuut"
-        },
+          "timestamp": "2025-12-18T10:36:24.892122Z",
+          "comment": "null"
+        }
+      }
+    },
+    "2": {
+      "admin": {
         "dec": {
-          "timestamp": "2025-12-17T18:34:21.919926Z",
-          "comment": "tuuut"
+          "timestamp": "2025-12-18T10:36:28.301259Z",
+          "comment": "dasdasdsa"
+        }
+      }
+    },
+    "6": {
+      "admin": {
+        "dec": {
+          "timestamp": "2025-12-18T10:36:29.124170Z",
+          "comment": "null"
         }
       }
     }

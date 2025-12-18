@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <script src="jquery-3.7.1.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js" crossorigin="anonymous"></script>
     <link href="/static/fontawesome-free-7.1.0-web/css/all.css" rel="stylesheet" />
   <title>Social-Scoring-Experiment</title>
   <style>
@@ -84,10 +84,45 @@
       .container { grid-template-columns: 1fr; }
       .row { grid-template-columns: 56px 1fr 100px 180px; }
     }
+    /* Overlay (Maske) ist initial unsichtbar */
+    #inputModal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, .35);
+        z-index: 1000;
+    }
+    .modal__dialog {
+        background: #fff;
+        border-radius: 12px;
+        padding: 16px;
+        width: min(600px, 90vw);
+        margin: 10vh auto;
+        box-shadow: 0 20px 50px rgba(0,0,0,.2);
+    }
+    textarea { width: 100%; box-sizing: border-box; padding: 10px; resize: vertical; }
+    .comment-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+    button { cursor: pointer; }
   </style>
 </head>
 <body>
-  <div class="container">
+<!-- Vorexistierende Maske; wird per jQuery ein-/ausgeblendet -->
+<div id="inputModal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modalTitle">
+    <div class="modal__dialog" role="document">
+        <h2 id="modalTitle">Dein Text</h2>
+        <form id="inputForm">
+            <textarea id="inputText" rows="6" placeholder="Schreib etwas …"></textarea>
+            <div class="comment-actions">
+                <button type="button" id="cancelBtn">Abbrechen</button>
+                <button type="submit">Senden</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- TODO div anpassen -->
+
+<div class="container">
     <!-- Linke Seite: Profil -->
     <div class="card profile-card">
       <h2>Dein Profil</h2>
@@ -150,7 +185,7 @@
 
       persons.sort(function(a, b) {return b['score']-a['score']});
 
-      for (const p of persons) {
+      for (const person of persons) {
         const tr = document.createElement('tr');
         tr.className = 'row';
 
@@ -160,23 +195,21 @@
         avatar.className = 'person-avatar';
         const img = document.createElement('img');
         img.alt = 'Foto';
-        img.src = p.photo || placeholderDataUrl;
+        img.src = person.photo || placeholderDataUrl;
         img.style.display = 'block';
         avatar.appendChild(img);
         tdPhoto.appendChild(avatar);
 
         // Name-Zelle
         const tdName = document.createElement('td');
-        tdName.textContent = p.name;
+        tdName.textContent = person.name;
 
         // Score-Zelle
         const tdScore = document.createElement('td');
         const scoreSpan = document.createElement('span');
         scoreSpan.className = 'score';
-        scoreSpan.textContent = Number(p.score).toFixed(1);
+        scoreSpan.textContent = Number(person.score).toFixed(1);
         tdScore.appendChild(scoreSpan);
-
-        // TODO alle "tuuut" ersetzen durch wirkliche Message
 
         // Aktionen-Zelle
         const tdActions = document.createElement('td');
@@ -184,7 +217,7 @@
         const btnPlus = document.createElement('button');
         btnPlus.className = 'btn btn-plus';
         btnPlus.textContent = '+';
-        btnPlus.addEventListener('click', () => vote(p.id, 'inc', "tuuut"));
+        btnPlus.addEventListener('click', () => vote(person.id, 'inc', null));
 
         const btnPlusMessage = document.createElement('button');
         btnPlusMessage.className = 'btn btn-plus';
@@ -196,7 +229,7 @@
         icon.className = 'fa-regular fa-message';
         btnPlusMessage.appendChild(textNode);
         btnPlusMessage.appendChild(icon);
-        btnPlusMessage.addEventListener('click', () => vote(p.id, 'inc', "tuuut"));
+        btnPlusMessage.addEventListener('click', () => openModal(person.id, 'inc'));
 
         const btnMinusMessage = document.createElement('button');
         btnMinusMessage.className = 'btn btn-minus';
@@ -208,15 +241,12 @@
         icon2.className = 'fa-regular fa-message';
         btnMinusMessage.appendChild(textNode2);
         btnMinusMessage.appendChild(icon2);
-        btnMinusMessage.addEventListener('click', () => vote(p.id, 'dec', "tuuut"));
-
-
-        btnMinusMessage.addEventListener('click', () => vote(p.id, 'dec', "tuuut"));
+        btnMinusMessage.addEventListener('click', () => openModal(person.id, 'dec'));
 
         const btnMinus = document.createElement('button');
         btnMinus.className = 'btn btn-minus';
         btnMinus.textContent = '−';
-        btnMinus.addEventListener('click', () => vote(p.id, 'dec', "tuuut"));
+        btnMinus.addEventListener('click', () => vote(person.id, 'dec', null));
 
         tdActions.appendChild(btnPlus);
         tdActions.appendChild(btnPlusMessage);
@@ -287,6 +317,56 @@
       await initialLoad();
       pollLoop();
     })();
+
+    // Alles was mit dem Comment-Fenster zu tun hat ist hier
+    const $modal = $('#inputModal');
+    const $form = $('#inputForm');
+    const $textarea = $('#inputText');
+    const $cancelBtn = $('#cancelBtn');
+    let lastFocus = null;
+    let personId = null;
+    let operation = null;
+
+    function openModal(pId, operator) {
+        personId = pId;
+        operation = operator;
+        lastFocus = document.activeElement;
+        $textarea.val('');
+        $modal.attr('aria-hidden', 'false').fadeIn(200, function() {
+            $textarea.trigger('focus');
+        });
+    }
+
+    function closeModal() {
+        $modal.fadeOut(200, function() {
+            $modal.attr('aria-hidden', 'true');
+            if (lastFocus) $(lastFocus).trigger('focus');
+        });
+    }
+
+    $cancelBtn.on('click', closeModal);
+
+    $form.on('submit', function(e) {
+        e.preventDefault();
+        const commentText = $textarea.val().trim();
+        vote(personId, operation, commentText);
+        closeModal();
+    });
+
+    // Klick außerhalb des Dialogs schließt die Maske
+    $modal.on('click', function(e) {
+        if ($(e.target).closest('.modal__dialog').length === 0) {
+            closeModal();
+        }
+    });
+
+    // ESC schließt die Maske
+    $(document).on('keydown', function(e) {
+        if (e.key === 'Escape' && $modal.is(':visible')) {
+            closeModal();
+        }
+    });
+
   </script>
 </body>
 </html>
