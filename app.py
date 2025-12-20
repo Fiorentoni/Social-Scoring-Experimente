@@ -26,6 +26,7 @@ GIST_ID = '87fdd41e4912744677bccb6c31600b6a'
 FILENAME = 'score.json'
 
 # TODO add same for diary
+# test
 
 HEADERS = {
     "Authorization": f"token {os.environ.get('GITHUB_TOKEN')}",
