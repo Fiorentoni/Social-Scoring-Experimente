@@ -22,7 +22,6 @@ app.config.update(
 )
 
 # Konfiguration
-GIST_ID = '87fdd41e4912744677bccb6c31600b6a'
 FILENAME = 'score.json'
 
 # TODO add same for diary
@@ -34,7 +33,7 @@ HEADERS = {
 }
 
 STARTING_SCORE = 4.0
-BASE_SCORE_CHANGE = 0.1
+BASE_SCORE_CHANGE = 0.05
 SCORE_COOLDOWN_HOURS = timedelta(hours=12)
 
 
@@ -60,7 +59,7 @@ update_version = 0  # wird hochgezählt, wenn sich etwas ändert
 
 def get_gist_data():
     """Lädt die JSON-Daten aus dem Gist."""
-    response = requests.get(f"https://api.github.com/gists/{GIST_ID}", headers=HEADERS)
+    response = requests.get(f"https://api.github.com/gists/{os.environ.get("GIST_ID")}")
     if response.status_code == 200:
         gist_content = response.json()
         file_data = gist_content['files'][FILENAME]['content']
@@ -78,7 +77,7 @@ def update_gist_data(new_data_list):
             }
         }
     }
-    response = requests.patch(f"https://api.github.com/gists/{GIST_ID}",
+    response = requests.patch(f"https://api.github.com/gists/{os.environ.get("GIST_ID")}",
                               headers=HEADERS,
                               json=payload)
     return response.status_code == 200
@@ -112,8 +111,6 @@ def load_current_state() -> Any:
 
     data = get_gist_data()
     update_version = data.get("version", 0)
-
-
 
     return data
 
@@ -260,7 +257,7 @@ def increase_score(person_id: int) -> tuple[Response, int] | tuple[Response, int
         if not person:
             return jsonify({"error": "Person nicht gefunden"}), 404
 
-        person["score"] = round(person["score"] + BASE_SCORE_CHANGE, 1)
+        person["score"] = round(person["score"] + BASE_SCORE_CHANGE, 2)
         record_vote(user, person_id, "inc", comment)  # Vote vermerken
         bump_version()
         return jsonify({"version": update_version, "person": person})
@@ -285,10 +282,13 @@ def decrease_score(person_id: int) -> tuple[Response, int] | tuple[Response, int
         if not person:
             return jsonify({"error": "Person nicht gefunden"}), 404
 
-        person["score"] = round(person["score"] - BASE_SCORE_CHANGE, 1)
+        person["score"] = round(person["score"] - BASE_SCORE_CHANGE, 2)
         record_vote(user, person_id, "dec", comment)  # Vote vermerken
         bump_version()
         return jsonify({"version": update_version, "person": person})
+
+# def calculate_vote_weight():
+
 
 
 @app.route("/api/updates", methods=["GET"])
