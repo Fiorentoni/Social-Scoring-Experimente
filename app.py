@@ -4,6 +4,8 @@ import threading
 from datetime import timedelta, datetime, timezone
 from time import strftime
 from typing import Any
+import requests
+import json
 
 from flask import Flask, jsonify, request, render_template, session, redirect, \
     url_for, Response
@@ -19,9 +21,17 @@ app.config.update(
     # SESSION_COOKIE_SECURE=True,
 )
 
-SCORE_FILE = "score.json"
-DIARY_FILE = "diary.json"
+# Konfiguration
+GITHUB_TOKEN = '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'
+GIST_ID = '87fdd41e4912744677bccb6c31600b6a'
+FILENAME = 'score.json'
 
+# TODO add same for diary
+
+HEADERS = {
+    "Authorization": f"token {GITHUB_TOKEN}",
+    "Accept": "application/vnd.github.v3+json"
+}
 
 STARTING_SCORE = 4.0
 BASE_SCORE_CHANGE = 0.1
@@ -48,10 +58,36 @@ state_lock = threading.Lock()
 version_condition = threading.Condition(state_lock)
 update_version = 0  # wird hochgezählt, wenn sich etwas ändert
 
+def get_gist_data():
+    """Lädt die JSON-Daten aus dem Gist."""
+    response = requests.get(f"https://api.github.com/gists/{GIST_ID}", headers=HEADERS)
+    if response.status_code == 200:
+        gist_content = response.json()
+        file_data = gist_content['files'][FILENAME]['content']
+        return json.loads(file_data)
+    else:
+        print("Fehler beim Laden:", response.status_code)
+        return {}
+
+def update_gist_data(new_data_list):
+    """Speichert die komplette Liste zurück in den Gist."""
+    payload = {
+        "files": {
+            FILENAME: {
+                "content": json.dumps(new_data_list, indent=4)
+            }
+        }
+    }
+    response = requests.patch(f"https://api.github.com/gists/{GIST_ID}",
+                              headers=HEADERS,
+                              json=payload)
+    return response.status_code == 200
+
+
 def load_current_state() -> Any:
     global update_version
 
-    if not os.path.exists(SCORE_FILE):
+    if not get_gist_data():
         initial = {
             "version": 0,
             "persons": [
@@ -69,30 +105,20 @@ def load_current_state() -> Any:
             ],
             "vote_log": {}
         }
-        with open(SCORE_FILE, "w", encoding="utf-8") as file:
-            json.dump(initial, file, ensure_ascii=False, indent=2)
+
+        update_gist_data(initial)
 
             # TODO add diary filling
 
-    with open(SCORE_FILE, "r", encoding="utf-8") as file:
-        data = json.load(file)
+    data = get_gist_data()
     update_version = data.get("version", 0)
 
-    # Tägliches Backup
-    backup_score_file(data)
-    # TODO add backup diary file
+
 
     return data
 
-def backup_score_file(data: object) -> None:
-    backup_file = "score" + str(datetime.today().date()) + ".json"
-    if not os.path.exists(backup_file):
-        with open(backup_file, "w", encoding="utf-8") as file:
-            json.dump(data, file, ensure_ascii=False, indent=2)
-
 def save_state(data: object) -> None:
-    with open(SCORE_FILE, "w", encoding="utf-8") as file:
-        json.dump(data, file, ensure_ascii=False, indent=2)
+    update_gist_data(data)
 
 def get_utc_now():
     return datetime.now(timezone.utc)
