@@ -22,14 +22,13 @@ app.config.update(
 )
 
 # Konfiguration
-GITHUB_TOKEN = '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'
 GIST_ID = '87fdd41e4912744677bccb6c31600b6a'
 FILENAME = 'score.json'
 
 # TODO add same for diary
 
 HEADERS = {
-    "Authorization": f"token {GITHUB_TOKEN}",
+    "Authorization": f"token {os.environ.get('GITHUB_TOKEN')}",
     "Accept": "application/vnd.github.v3+json"
 }
 
