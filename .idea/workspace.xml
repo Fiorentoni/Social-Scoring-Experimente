@@ -1,10 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="d56324d9-575d-4163-b727-8b0cee462ca9" name="Changes" comment="add comment for message">
-      <change beforePath="$PROJECT_DIR$/score.json" beforeDir="false" afterPath="$PROJECT_DIR$/score.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/templates/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/templates/index.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/templates/login.html" beforeDir="false" afterPath="$PROJECT_DIR$/templates/login.html" afterDir="false" />
+    <list default="true" id="d56324d9-575d-4163-b727-8b0cee462ca9" name="Changes" comment="changed button color and behaviour">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -73,7 +71,7 @@
     &quot;last_opened_file_path&quot;: &quot;C:/Users/ranie/PycharmProjects/Social-Scoring-Experiment&quot;,
     &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
     &quot;run.code.analysis.last.selected.profile&quot;: &quot;aDefault&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;settings.sync&quot;,
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
 }</component>
@@ -153,7 +151,11 @@
       <workItem from="1765996819893" duration="23000" />
       <workItem from="1765998019769" duration="740000" />
       <workItem from="1766005886651" duration="338000" />
-      <workItem from="1766045316350" duration="7315000" />
+      <workItem from="1766045316350" duration="9071000" />
+      <workItem from="1766070738130" duration="99000" />
+      <workItem from="1766070924912" duration="304000" />
+      <workItem from="1766071268014" duration="8000" />
+      <workItem from="1766156178719" duration="24000" />
     </task>
     <task id="LOCAL-00001" summary="initial commit">
       <option name="closed" value="true" />
@@ -171,7 +173,15 @@
       <option name="project" value="LOCAL" />
       <updated>1766054242927</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL-00003" summary="changed button color and behaviour">
+      <option name="closed" value="true" />
+      <created>1766057534732</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1766057534732</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -191,18 +201,8 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="initial commit" />
     <MESSAGE value="add comment for message" />
-    <option name="LAST_COMMIT_MESSAGE" value="add comment for message" />
-  </component>
-  <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/app.py</url>
-          <line>242</line>
-          <option name="timeStamp" value="1" />
-        </line-breakpoint>
-      </breakpoints>
-    </breakpoint-manager>
+    <MESSAGE value="changed button color and behaviour" />
+    <option name="LAST_COMMIT_MESSAGE" value="changed button color and behaviour" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/Social_Scoring_Experiment$Social_Scoring_Experiment.coverage" NAME="Social-Scoring-Experiment Coverage Results" MODIFIED="1766057486466" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
