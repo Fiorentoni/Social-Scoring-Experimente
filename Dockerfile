@@ -1,14 +1,23 @@
 # Use the official Python image as the base image
-FROM python:3.8
+#FROM python:3.13
 
 # Set the working directory in the container
-WORKDIR /app
+#WORKDIR /app
 
 # Copy the application files into the working directory
-COPY . /app
+#COPY . /app
 
 # Install the application dependencies
-# RUN pip install -r requirements.txt
+#RUN pip install -r requirements.txt
 
 # Define the entry point for the container
-CMD ["flask", "run", "--host=0.0.0.0"]
+#CMD ["flask", "run", "--host=0.0.0.0"]
+
+FROM python:3.13
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+ENV FLASK_APP=app.py
+EXPOSE 5000
+CMD ["python", "-m", "flask", "run", "--host=0.0.0.0", "--port", "5000"]
