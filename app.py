@@ -11,6 +11,8 @@ from flask import Flask, jsonify, request, render_template, session, redirect, \
     url_for, Response
 from werkzeug import Response
 
+# TODO auf FAST API umstellen
+
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-me")
 app.permanent_session_lifetime = timedelta(days=30)
@@ -34,6 +36,33 @@ HEADERS = {
 
 STARTING_SCORE = 4.0
 BASE_SCORE_CHANGE = 0.05
+RANKING_PERCENTAGES = {
+    9.10: 1,
+    18.19: 2,
+    27.28: 3,
+    36.37: 4,
+    45.46: 5,
+    54.56: 6,
+    63.65: 7,
+    72.74: 8,
+    81.83: 9,
+    90.92: 10,
+    100.0: 11
+}
+VOTE_WEIGHTS = { #TODO halbieren?
+    1: 0.5,
+    2: 0.4,
+    3: 0.3,
+    4: 0.2,
+    5: 0.1,
+    6: 0.09,
+    7: 0.08,
+    8: 0.07,
+    9: 0.06,
+    10: 0.05,
+    11: 0.04
+}
+VOTE_WEIGHT_ADMIN = 0.2
 SCORE_COOLDOWN_HOURS = timedelta(hours=12)
 
 
@@ -49,7 +78,7 @@ USERS = {
     "Sadiyah": {"display_name": "Sadiyah", "password": "sprache"},
     "Jan-Luca": {"display_name": "Jan-Luca", "password": "wald"},
     "Samuel": {"display_name": "Samuel", "password": "blitz"},
-    "admin": {"display_name": "Admin", "password": "admin"},
+    "admin": {"display_name": "Admin", "password": "speck"},
 }
 
 # Gemeinsamer Zustand + Synchronisation für Long-Polling
@@ -111,6 +140,7 @@ def load_current_state() -> Any:
 
     data = get_gist_data()
     update_version = data.get("version", 0)
+
 
     return data
 
@@ -186,14 +216,22 @@ def render_index() -> Response | str:
     if not current_user():
         return redirect(url_for("render_login", next=request.path))
     user = current_user()
-    user_score = "User ohne Score"
-    for person in current_state["persons"]:
-        if person["name"] == user:
-            user_score = person["score"]
+    person = get_current_person()
+    user_score = person["score"] # TODO BUG!
     return render_template("index.html",
                            logged_in_user=user,
                            display_name=USERS[user]["display_name"],
                            user_score=user_score)
+
+def get_current_person():
+    if current_user() == "admin":
+        return {"name": "admin", "score": 0.0}
+
+    for person in current_state["persons"]:
+        if person["name"] == current_user():
+            current_person = person
+
+    return current_person
 
 
 @app.route("/api/persons", methods=["GET"])
@@ -243,6 +281,7 @@ def increase_score(person_id: int) -> tuple[Response, int] | tuple[Response, int
     if not_logged:
         return not_logged
     user = current_user()
+    current_person = get_current_person()
     with state_lock:
         allowed, remaining = can_vote_now(user, person_id, "inc")
         if not allowed:
@@ -257,7 +296,8 @@ def increase_score(person_id: int) -> tuple[Response, int] | tuple[Response, int
         if not person:
             return jsonify({"error": "Person nicht gefunden"}), 404
 
-        person["score"] = round(person["score"] + BASE_SCORE_CHANGE, 2)
+        vote_weight = get_vote_weight(current_person)
+        person["score"] = round(person["score"] + vote_weight, 2)
         record_vote(user, person_id, "inc", comment)  # Vote vermerken
         bump_version()
         return jsonify({"version": update_version, "person": person})
@@ -268,6 +308,7 @@ def decrease_score(person_id: int) -> tuple[Response, int] | tuple[Response, int
     if not_logged:
         return not_logged
     user = current_user()
+    current_person = get_current_person()
     with state_lock:
         allowed, remaining = can_vote_now(user, person_id, "dec")
         if not allowed:
@@ -282,14 +323,81 @@ def decrease_score(person_id: int) -> tuple[Response, int] | tuple[Response, int
         if not person:
             return jsonify({"error": "Person nicht gefunden"}), 404
 
-        person["score"] = round(person["score"] - BASE_SCORE_CHANGE, 2)
+        vote_weight = get_vote_weight(current_person)
+        person["score"] = round(person["score"] - vote_weight, 2)
         record_vote(user, person_id, "dec", comment)  # Vote vermerken
         bump_version()
         return jsonify({"version": update_version, "person": person})
 
-# def calculate_vote_weight():
+
+def get_ranking_category(person):
+    sorted_scorelist = get_sorted_scorelist()
+    for user in sorted_scorelist:
+        if user['name'] == person['name']:
+            ranking = sorted_scorelist.index(user) + 1 # weil liste bei 0 anfängt!
+            ranking_percentage = ranking / len(sorted_scorelist) * 100
+            ranking_percentages_list = list(RANKING_PERCENTAGES)
+            match ranking_percentage:
+                case r if r <= ranking_percentages_list[0]:
+                    return 1
+                case r if r <= ranking_percentages_list[1]:
+                    return 2
+                case r if r <= ranking_percentages_list[2]:
+                    return 3
+                case r if r <= ranking_percentages_list[3]:
+                    return 4
+                case r if r <= ranking_percentages_list[4]:
+                    return 5
+                case r if r <= ranking_percentages_list[5]:
+                    return 6
+                case r if r <= ranking_percentages_list[6]:
+                    return 7
+                case r if r <= ranking_percentages_list[7]:
+                    return 8
+                case r if r <= ranking_percentages_list[8]:
+                    return 9
+                case r if r <= ranking_percentages_list[9]:
+                    return 10
+                case r if r <= ranking_percentages_list[10]:
+                    return 11
+                case _:
+                    return "Ungültiger Wert!"
+
+            # TODO was wenn keiner gefunden?
 
 
+def get_vote_weight(person):
+    if person["name"] == "admin":
+        return VOTE_WEIGHT_ADMIN
+
+    ranking_category = get_ranking_category(person)
+    vote_weight = VOTE_WEIGHTS[ranking_category]
+    return vote_weight
+
+def get_privileges(person):
+    ranking_category = get_ranking_category(person)
+    privileges = []
+
+    if ranking_category == 1:
+        privileges.append("Darf einzelne Privilegien nach Absprache mit Lehrkraft an Andere weitergeben", "green")
+        privileges.append("Darf Unterrichtsentscheidungen mitbestimmten (z.B. jetzt ein Video schauen oder mehr Zeit für eine Aufgabe oder Umfang der Hausaufgaben", "green")
+        privileges.append("Darf einzelne negative Effekte nach Absprache mit Lehrkraft bei Anderen aufheben", "green")
+    if ranking_category <= 1 <= 3:
+        privileges.append("Verspätungen werden nicht negativ gewertet", "green")
+        privileges.append("Erhält ab und zu Snacks/Getränke von der Lehrkraft", "green")
+    if ranking_category <= 1 <= 5:
+
+    if ranking_category <= 6 <= 11:
+
+    if ranking_category <= 8 <= 11:
+
+    if ranking_category == 11:
+
+    return privileges
+
+
+def get_sorted_scorelist():
+    return sorted(current_state["persons"], key = lambda person: person["score"], reverse = True)
 
 @app.route("/api/updates", methods=["GET"])
 def long_poll_updates() -> tuple[Response, int] | Response:
