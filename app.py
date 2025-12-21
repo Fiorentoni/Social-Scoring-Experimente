@@ -83,6 +83,7 @@ USERS = {
 
 # Gemeinsamer Zustand + Synchronisation für Long-Polling
 state_lock = threading.Lock()
+gist_lock = threading.Lock()
 version_condition = threading.Condition(state_lock)
 update_version = 0  # wird hochgezählt, wenn sich etwas ändert
 
@@ -114,31 +115,32 @@ def update_gist_data(new_data_list):
 
 def load_current_state() -> Any:
     global update_version
+    data = get_gist_data()
 
-    if not get_gist_data():
-        initial = {
-            "version": 0,
-            "persons": [
-                {"id": 1, "name": "Annika", "photo": None, "score": STARTING_SCORE, "privilege": None},
-                {"id": 2, "name": "Jonas", "photo": None, "score": STARTING_SCORE, "privilege": None},
-                {"id": 3, "name": "Tesniem", "photo": None, "score": STARTING_SCORE, "privilege": None},
-                {"id": 4, "name": "Nele", "photo": None, "score": STARTING_SCORE, "privilege": None},
-                {"id": 5, "name": "Nelly", "photo": None, "score": STARTING_SCORE, "privilege": None},
-                {"id": 6, "name": "Anna-Lena", "photo": None, "score": STARTING_SCORE, "privilege": None},
-                {"id": 7, "name": "Levin", "photo": None, "score": STARTING_SCORE, "privilege": None},
-                {"id": 8, "name": "Fynn", "photo": None, "score": STARTING_SCORE, "privilege": None},
-                {"id": 9, "name": "Sadiyah", "photo": None, "score": STARTING_SCORE, "privilege": None},
-                {"id": 10, "name": "Jan-Luca", "photo": None, "score": STARTING_SCORE, "privilege": None},
-                {"id": 11, "name": "Samuel", "photo": None, "score": STARTING_SCORE, "privilege": None},
-            ],
-            "vote_log": {}
-        }
+    with gist_lock:
+        if not data:
+            data = {
+                "version": 0,
+                "persons": [
+                    {"id": 1, "name": "Annika", "photo": None, "score": STARTING_SCORE, "privilege": None},
+                    {"id": 2, "name": "Jonas", "photo": None, "score": STARTING_SCORE, "privilege": None},
+                    {"id": 3, "name": "Tesniem", "photo": None, "score": STARTING_SCORE, "privilege": None},
+                    {"id": 4, "name": "Nele", "photo": None, "score": STARTING_SCORE, "privilege": None},
+                    {"id": 5, "name": "Nelly", "photo": None, "score": STARTING_SCORE, "privilege": None},
+                    {"id": 6, "name": "Anna-Lena", "photo": None, "score": STARTING_SCORE, "privilege": None},
+                    {"id": 7, "name": "Levin", "photo": None, "score": STARTING_SCORE, "privilege": None},
+                    {"id": 8, "name": "Fynn", "photo": None, "score": STARTING_SCORE, "privilege": None},
+                    {"id": 9, "name": "Sadiyah", "photo": None, "score": STARTING_SCORE, "privilege": None},
+                    {"id": 10, "name": "Jan-Luca", "photo": None, "score": STARTING_SCORE, "privilege": None},
+                    {"id": 11, "name": "Samuel", "photo": None, "score": STARTING_SCORE, "privilege": None},
+                ],
+                "vote_log": {}
+            }
 
-        update_gist_data(initial)
+            update_gist_data(data)
 
             # TODO add diary filling
 
-    data = get_gist_data()
     update_version = data.get("version", 0)
 
     return data
@@ -240,20 +242,16 @@ def add_privileges_to_state(state):
 
     return state
 
-######### Globaler Zustand im Speicher
-current_state = load_current_state()
-current_state = add_privileges_to_state(current_state)
-
-
-# TODO brauchen wir wirklich Jquery?
-
 def bump_version() -> None:
     global update_version
+    global current_state
     update_version += 1
     current_state["version"] = update_version
     save_state(current_state)
-    version_condition.notify_all()
 
+    # Update current_state mit Privilegien nur im lokalen Speicher
+    current_state = add_privileges_to_state(current_state)
+    version_condition.notify_all()
 
 def current_user() -> Any | None:
     user = session.get("user")
@@ -356,7 +354,7 @@ def record_vote(user: str, person_id: int, operation: str, comment: str) -> None
     vote_log_per_person = vote_log.setdefault(str(person_id), {})
     vote_log_per_person_for_user = vote_log_per_person.setdefault(str(user), {})
     vote_log_per_person_for_user[operation] = {"timestamp": convert_to_iso_zulu(get_utc_now()),
-                                 "comment": comment}
+                                               "comment": comment}
 
 @app.route("/api/persons/<int:person_id>/inc", methods=["POST"])
 def increase_score(person_id: int) -> tuple[Response, int] | tuple[Response, int] | Response:
@@ -429,6 +427,13 @@ def long_poll_updates() -> tuple[Response, int] | Response:
         changed = update_version > since
         return jsonify({"changed": changed, "version": update_version, "persons": current_state["persons"]})
 
+
+######### Globaler Zustand im Speicher
+current_state = load_current_state()
+current_state = add_privileges_to_state(current_state)
+#########
+
+# TODO brauchen wir wirklich Jquery?
 
 if __name__ == "__main__":
     # Debug nur lokal; für Produktion WSGI-Server nutzen
