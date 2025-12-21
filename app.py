@@ -122,17 +122,17 @@ def load_current_state() -> Any:
             data = {
                 "version": 0,
                 "persons": [
-                    {"id": 1, "name": "Annika", "photo": None, "score": STARTING_SCORE, "privilege": None},
-                    {"id": 2, "name": "Jonas", "photo": None, "score": STARTING_SCORE, "privilege": None},
-                    {"id": 3, "name": "Tesniem", "photo": None, "score": STARTING_SCORE, "privilege": None},
-                    {"id": 4, "name": "Nele", "photo": None, "score": STARTING_SCORE, "privilege": None},
-                    {"id": 5, "name": "Nelly", "photo": None, "score": STARTING_SCORE, "privilege": None},
-                    {"id": 6, "name": "Anna-Lena", "photo": None, "score": STARTING_SCORE, "privilege": None},
-                    {"id": 7, "name": "Levin", "photo": None, "score": STARTING_SCORE, "privilege": None},
-                    {"id": 8, "name": "Fynn", "photo": None, "score": STARTING_SCORE, "privilege": None},
-                    {"id": 9, "name": "Sadiyah", "photo": None, "score": STARTING_SCORE, "privilege": None},
-                    {"id": 10, "name": "Jan-Luca", "photo": None, "score": STARTING_SCORE, "privilege": None},
-                    {"id": 11, "name": "Samuel", "photo": None, "score": STARTING_SCORE, "privilege": None},
+                    {"id": 1, "name": "Annika", "photo": None, "score": STARTING_SCORE, "privileges": None},
+                    {"id": 2, "name": "Jonas", "photo": None, "score": STARTING_SCORE, "privileges": None},
+                    {"id": 3, "name": "Tesniem", "photo": None, "score": STARTING_SCORE, "privileges": None},
+                    {"id": 4, "name": "Nele", "photo": None, "score": STARTING_SCORE, "privileges": None},
+                    {"id": 5, "name": "Nelly", "photo": None, "score": STARTING_SCORE, "privileges": None},
+                    {"id": 6, "name": "Anna-Lena", "photo": None, "score": STARTING_SCORE, "privileges": None},
+                    {"id": 7, "name": "Levin", "photo": None, "score": STARTING_SCORE, "privileges": None},
+                    {"id": 8, "name": "Fynn", "photo": None, "score": STARTING_SCORE, "privileges": None},
+                    {"id": 9, "name": "Sadiyah", "photo": None, "score": STARTING_SCORE, "privileges": None},
+                    {"id": 10, "name": "Jan-Luca", "photo": None, "score": STARTING_SCORE, "privileges": None},
+                    {"id": 11, "name": "Samuel", "photo": None, "score": STARTING_SCORE, "privileges": None},
                 ],
                 "vote_log": {}
             }
@@ -238,7 +238,7 @@ def get_sorted_scorelist():
 
 def add_privileges_to_state(state):
     for person in state["persons"]:
-        person["privilege"] = get_privileges(person)
+        person["privileges"] = get_privileges(person)
 
     return state
 
