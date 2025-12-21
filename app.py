@@ -119,17 +119,17 @@ def load_current_state() -> Any:
         initial = {
             "version": 0,
             "persons": [
-                {"id": 1, "name": "Annika", "photo": None, "score": STARTING_SCORE},
-                {"id": 2, "name": "Jonas", "photo": None, "score": STARTING_SCORE},
-                {"id": 3, "name": "Tesniem", "photo": None, "score": STARTING_SCORE},
-                {"id": 4, "name": "Nele", "photo": None, "score": STARTING_SCORE},
-                {"id": 5, "name": "Nelly", "photo": None, "score": STARTING_SCORE},
-                {"id": 6, "name": "Anna-Lena", "photo": None, "score": STARTING_SCORE},
-                {"id": 7, "name": "Levin", "photo": None, "score": STARTING_SCORE},
-                {"id": 8, "name": "Fynn", "photo": None, "score": STARTING_SCORE},
-                {"id": 9, "name": "Sadiyah", "photo": None, "score": STARTING_SCORE},
-                {"id": 10, "name": "Jan-Luca", "photo": None, "score": STARTING_SCORE},
-                {"id": 11, "name": "Samuel", "photo": None, "score": STARTING_SCORE},
+                {"id": 1, "name": "Annika", "photo": None, "score": STARTING_SCORE, "privilege": None},
+                {"id": 2, "name": "Jonas", "photo": None, "score": STARTING_SCORE, "privilege": None},
+                {"id": 3, "name": "Tesniem", "photo": None, "score": STARTING_SCORE, "privilege": None},
+                {"id": 4, "name": "Nele", "photo": None, "score": STARTING_SCORE, "privilege": None},
+                {"id": 5, "name": "Nelly", "photo": None, "score": STARTING_SCORE, "privilege": None},
+                {"id": 6, "name": "Anna-Lena", "photo": None, "score": STARTING_SCORE, "privilege": None},
+                {"id": 7, "name": "Levin", "photo": None, "score": STARTING_SCORE, "privilege": None},
+                {"id": 8, "name": "Fynn", "photo": None, "score": STARTING_SCORE, "privilege": None},
+                {"id": 9, "name": "Sadiyah", "photo": None, "score": STARTING_SCORE, "privilege": None},
+                {"id": 10, "name": "Jan-Luca", "photo": None, "score": STARTING_SCORE, "privilege": None},
+                {"id": 11, "name": "Samuel", "photo": None, "score": STARTING_SCORE, "privilege": None},
             ],
             "vote_log": {}
         }
@@ -140,7 +140,6 @@ def load_current_state() -> Any:
 
     data = get_gist_data()
     update_version = data.get("version", 0)
-
 
     return data
 
@@ -159,8 +158,92 @@ def convert_from_iso_zulu(string: str) -> datetime:
     if string.endswith("Z"):
         string = string[:-1] + "+00:00"
     return datetime.fromisoformat(string)
-# Globaler Zustand im Speicher
+
+def get_ranking_category(person):
+    sorted_scorelist = get_sorted_scorelist()
+    for user in sorted_scorelist:
+        if user['name'] == person['name']:
+            ranking = sorted_scorelist.index(user) + 1 # weil liste bei 0 anfängt!
+            ranking_percentage = ranking / len(sorted_scorelist) * 100
+            ranking_percentages_list = list(RANKING_PERCENTAGES)
+            match ranking_percentage:
+                case r if r <= ranking_percentages_list[0]:
+                    return 1
+                case r if r <= ranking_percentages_list[1]:
+                    return 2
+                case r if r <= ranking_percentages_list[2]:
+                    return 3
+                case r if r <= ranking_percentages_list[3]:
+                    return 4
+                case r if r <= ranking_percentages_list[4]:
+                    return 5
+                case r if r <= ranking_percentages_list[5]:
+                    return 6
+                case r if r <= ranking_percentages_list[6]:
+                    return 7
+                case r if r <= ranking_percentages_list[7]:
+                    return 8
+                case r if r <= ranking_percentages_list[8]:
+                    return 9
+                case r if r <= ranking_percentages_list[9]:
+                    return 10
+                case r if r <= ranking_percentages_list[10]:
+                    return 11
+                case _:
+                    return "Ungültiger Wert!"
+
+            # TODO was wenn keiner gefunden?
+
+def get_vote_weight(person):
+    if person["name"] == "admin":
+        return VOTE_WEIGHT_ADMIN
+
+    ranking_category = get_ranking_category(person)
+    vote_weight = VOTE_WEIGHTS[ranking_category]
+    return vote_weight
+
+def get_privileges(person):
+    ranking_category = get_ranking_category(person)
+    privileges = []
+
+    if ranking_category == 1:
+        privileges.append(["Darf einzelne Privilegien nach Absprache mit Lehrkraft an Andere weitergeben", "green"])
+        privileges.append(["Darf Unterrichtsentscheidungen mitbestimmen (z.B. jetzt ein Video schauen oder mehr Zeit für eine Aufgabe oder Umfang der Hausaufgaben", "green"])
+        privileges.append(["Darf einzelne negative Effekte nach Absprache mit Lehrkraft bei Anderen aufheben", "green"])
+    if  1 <= ranking_category <= 3:
+        privileges.append(["Verspätungen werden nicht negativ gewertet", "green"])
+        privileges.append(["Erhält ab und zu Snacks/Getränke von der Lehrkraft", "green"])
+        privileges.append(["Hat einen Joker bei der Zufallsauswahl", "green"])
+        privileges.append(["Keine verpflichtenden Hausaufgaben", "green"])
+        privileges.append(["Zusätzliche WLAN-Zugänge", "green"])
+        privileges.append(["Darf im Unterricht essen", "green"])
+    if  1 <= ranking_category <= 5:
+        privileges.append(["Auge zu bei leicht verspäteten Entschuldigungen", "green"])
+        privileges.append(["Kommt zuerst bei Notenbesprechung", "green"])
+    if 6 <= ranking_category  <= 11:
+        privileges.append(["Ab und zu nur die Untersten in Zufallsauswahl", "red"])
+        privileges.append(["Darf nicht früher gehen", "red"])
+    if 8 <= ranking_category <= 11:
+        privileges.append(["Lehrkraft bestimmt Sitzplatz", "red"])
+        privileges.append(["iPad muss flach auf dem Tisch liegen", "red"])
+    if ranking_category == 11:
+        privileges.append(["Muss 1x pro Woche Kuchen (oder gesunde Snacks) mitbringen", "red"])
+
+    return privileges
+
+def get_sorted_scorelist():
+    return sorted(current_state["persons"], key = lambda person: person["score"], reverse = True)
+
+def add_privileges_to_state(state):
+    for person in state["persons"]:
+        person["privilege"] = get_privileges(person)
+
+    return state
+
+######### Globaler Zustand im Speicher
 current_state = load_current_state()
+current_state = add_privileges_to_state(current_state)
+
 
 # TODO brauchen wir wirklich Jquery?
 
@@ -328,76 +411,6 @@ def decrease_score(person_id: int) -> tuple[Response, int] | tuple[Response, int
         record_vote(user, person_id, "dec", comment)  # Vote vermerken
         bump_version()
         return jsonify({"version": update_version, "person": person})
-
-
-def get_ranking_category(person):
-    sorted_scorelist = get_sorted_scorelist()
-    for user in sorted_scorelist:
-        if user['name'] == person['name']:
-            ranking = sorted_scorelist.index(user) + 1 # weil liste bei 0 anfängt!
-            ranking_percentage = ranking / len(sorted_scorelist) * 100
-            ranking_percentages_list = list(RANKING_PERCENTAGES)
-            match ranking_percentage:
-                case r if r <= ranking_percentages_list[0]:
-                    return 1
-                case r if r <= ranking_percentages_list[1]:
-                    return 2
-                case r if r <= ranking_percentages_list[2]:
-                    return 3
-                case r if r <= ranking_percentages_list[3]:
-                    return 4
-                case r if r <= ranking_percentages_list[4]:
-                    return 5
-                case r if r <= ranking_percentages_list[5]:
-                    return 6
-                case r if r <= ranking_percentages_list[6]:
-                    return 7
-                case r if r <= ranking_percentages_list[7]:
-                    return 8
-                case r if r <= ranking_percentages_list[8]:
-                    return 9
-                case r if r <= ranking_percentages_list[9]:
-                    return 10
-                case r if r <= ranking_percentages_list[10]:
-                    return 11
-                case _:
-                    return "Ungültiger Wert!"
-
-            # TODO was wenn keiner gefunden?
-
-
-def get_vote_weight(person):
-    if person["name"] == "admin":
-        return VOTE_WEIGHT_ADMIN
-
-    ranking_category = get_ranking_category(person)
-    vote_weight = VOTE_WEIGHTS[ranking_category]
-    return vote_weight
-
-def get_privileges(person):
-    ranking_category = get_ranking_category(person)
-    privileges = []
-
-    if ranking_category == 1:
-        privileges.append("Darf einzelne Privilegien nach Absprache mit Lehrkraft an Andere weitergeben", "green")
-        privileges.append("Darf Unterrichtsentscheidungen mitbestimmten (z.B. jetzt ein Video schauen oder mehr Zeit für eine Aufgabe oder Umfang der Hausaufgaben", "green")
-        privileges.append("Darf einzelne negative Effekte nach Absprache mit Lehrkraft bei Anderen aufheben", "green")
-    if ranking_category <= 1 <= 3:
-        privileges.append("Verspätungen werden nicht negativ gewertet", "green")
-        privileges.append("Erhält ab und zu Snacks/Getränke von der Lehrkraft", "green")
-    if ranking_category <= 1 <= 5:
-
-    if ranking_category <= 6 <= 11:
-
-    if ranking_category <= 8 <= 11:
-
-    if ranking_category == 11:
-
-    return privileges
-
-
-def get_sorted_scorelist():
-    return sorted(current_state["persons"], key = lambda person: person["score"], reverse = True)
 
 @app.route("/api/updates", methods=["GET"])
 def long_poll_updates() -> tuple[Response, int] | Response:
