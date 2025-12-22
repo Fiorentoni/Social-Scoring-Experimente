@@ -191,7 +191,7 @@
     <div class="modal__dialog" role="document">
         <h2 id="modalTitle"></h2>
         <form id="inputForm">
-            <textarea id="inputText" rows="6" placeholder="Schreib etwas …"></textarea>
+            <textarea id="inputText" maxlength="100" rows="6" placeholder="Maximal 100 Zeichen"></textarea>
             <div class="comment-actions">
                 <button class="btn btn-cancel" type="button" id="cancelBtn">Abbrechen</button>
                 <button class="btn btn-send" type="submit">Senden</button>
@@ -212,9 +212,13 @@
         </div>
         <span style="font-size: 30px" id="userName">{{ display_name }}</span>
         <span style="font-size: 30px" id="userScore">{{ user_score }}</span>
-          <div id="votesContainer">
-
-          </div>
+        <div id="votesContainer">
+            <div id="vote1"></div>
+            <div id="vote2"></div>
+            <div id="vote3"></div>
+            <div id="vote4"></div>
+            <div id="vote5"></div>
+        </div>
         <p>
            <button class="btn btn-logout" id="logoutButton" onclick="location.href='/logout';">Logout</button>
         </p>
@@ -412,7 +416,30 @@
     }
 
     function renderVoteLog(voteLog) {
-        console.log(voteLog);
+        for (let i = 0; i <= 5; i++) {
+            if (voteLog[i] == null) {
+                break;
+            }
+            const id = 'vote' + (i+1); // vote-Divs starten bei 1
+            const div = document.getElementById(id);
+
+            const personName = voteLog[i]['person'];
+            let operation = voteLog[i]['operation'];
+            const timestamp = voteLog[i]['timestamp'];
+            const comment = voteLog[i]['comment'];
+
+            if (operation === "inc") {
+                operation = "Upvote";
+            }
+            else {
+                operation = "Downvote";
+            }
+
+            let html = `<span>${operation} von ${personName}, ${timestamp}</span>`;
+            html += `<span>${comment}</span>`;
+
+            div.innerHTML = html;
+        }
     }
 
     async function initialLoad() {

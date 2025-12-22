@@ -320,6 +320,33 @@ def get_current_person():
 
     return current_person
 
+def get_structured_vote_log(own_vote_log):
+    flat_list = []
+
+    # 1. Struktur auflösen (Flatten)
+    for people in own_vote_log.items():
+        person_name = people[0]
+        for actions in people[1].items():
+            action_type = actions[0]
+            # Wir erstellen ein flaches Dictionary pro Eintrag
+            flat_entry = {
+                "person": person_name,
+                "operation": action_type,
+                "timestamp": actions[1]["timestamp"],
+                "comment": actions[1]["comment"]
+            }
+            flat_list.append(flat_entry)
+
+    # 2. Sortieren nach Timestamp (neueste zuerst)
+    # Da ISO-Strings (YYYY-MM-DD) sortierbar sind, reicht ein String-Vergleich
+    flat_list.sort(key=lambda x: x["timestamp"], reverse=True)
+
+    # 3. Umwandeln in lokalen Timestamp
+    for item in flat_list:
+        timestamp = item["timestamp"]
+        item['timestamp'] = convert_from_iso_zulu(timestamp).strftime("%d.%m.%Y, %H:%M:%S")
+
+    return flat_list
 
 @app.route("/api/persons", methods=["GET"])
 def get_persons() -> tuple[Response, int] | Response:
@@ -331,7 +358,7 @@ def get_persons() -> tuple[Response, int] | Response:
 
     with state_lock:
         return jsonify({"version": update_version, "persons": current_state["persons"],
-                        "own_vote_log": current_state["vote_log"].get(str(own_id))})
+                        "own_vote_log": get_structured_vote_log(current_state["vote_log"].get(str(own_id), {}))})
 
 #TODO ergänze "gelesen" bei VoteLog und das automatische Ausblenden / alternativ manuell gelesen markierne
 
@@ -448,7 +475,7 @@ def long_poll_updates() -> tuple[Response, int] | Response:
             version_condition.wait(timeout=25.0)
         changed = update_version > since
         return jsonify({"changed": changed, "version": update_version, "persons": current_state["persons"],
-                        "own_vote_log": current_state["vote_log"].get(str(own_id))}), 429
+                        "own_vote_log": get_structured_vote_log(current_state["vote_log"].get(str(own_id), {}))}), 429
 
 
 ######### Globaler Zustand im Speicher
