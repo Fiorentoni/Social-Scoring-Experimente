@@ -411,11 +411,16 @@
         return html;
     }
 
+    function renderVoteLog(voteLog) {
+        console.log(voteLog);
+    }
+
     async function initialLoad() {
       const res = await fetch('/api/persons');
       const data = await res.json();
       currentVersion = data.version || 0;
       renderPersons(data.persons || []);
+        renderVoteLog(data.own_vote_log || []);
     }
 
   async function vote(id, operation, comment) {
@@ -453,6 +458,7 @@
         if (data.changed) {
           currentVersion = data.version || currentVersion;
           renderPersons(data.persons || []);
+          renderVoteLog(data.own_vote_log || []);
         } else {
           // Keine Änderung, aber Version bleibt gleich; einfach weiterpolling
           currentVersion = data.version || currentVersion;

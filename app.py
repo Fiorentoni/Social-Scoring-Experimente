@@ -326,8 +326,14 @@ def get_persons() -> tuple[Response, int] | Response:
     not_logged = ensure_logged_in_api()
     if not_logged:
         return not_logged
+
+    own_id = get_current_person()["id"]
+
     with state_lock:
-        return jsonify({"version": update_version, "persons": current_state["persons"]})
+        return jsonify({"version": update_version, "persons": current_state["persons"],
+                        "own_vote_log": current_state["vote_log"].get(str(own_id))})
+
+#TODO ergänze "gelesen" bei VoteLog und das automatische Ausblenden / alternativ manuell gelesen markierne
 
 def can_vote_now(user: str, person_id: int, desired_operation: str) -> tuple[bool, None] | tuple[bool, Any]:
     """
@@ -435,11 +441,14 @@ def long_poll_updates() -> tuple[Response, int] | Response:
     except ValueError:
         since = 0
 
+    own_id = get_current_person()["id"]
+#
     with version_condition:
         if update_version <= since:
             version_condition.wait(timeout=25.0)
         changed = update_version > since
-        return jsonify({"changed": changed, "version": update_version, "persons": current_state["persons"]})
+        return jsonify({"changed": changed, "version": update_version, "persons": current_state["persons"],
+                        "own_vote_log": current_state["vote_log"].get(str(own_id))}), 429
 
 
 ######### Globaler Zustand im Speicher
