@@ -165,6 +165,8 @@ def convert_from_iso_zulu(string: str) -> datetime:
 
 def get_ranking_category(person):
     sorted_scorelist = get_sorted_scorelist()
+    # todo vergleichen mit vorheriger Kategorie und ggf. bei gleicher Punktzahl gleiche kategorie
+
     for user in sorted_scorelist:
         if user['name'] == person['name']:
             ranking = sorted_scorelist.index(user) + 1 # weil liste bei 0 anfängt!
@@ -209,6 +211,8 @@ def get_vote_weight(person):
 def get_privileges(person):
     ranking_category = get_ranking_category(person)
     privileges = []
+
+    # todo hinzufügen, dass ranking/votes erst ab version update 20 oder so passieren
 
     if ranking_category == 1:
         privileges.append(["Darf einzelne Privilegien nach Absprache mit Lehrkraft an Andere weitergeben", "green"])
@@ -308,7 +312,7 @@ def render_index() -> Response | str:
 
 def get_current_person():
     if current_user() == "admin":
-        return {"name": "admin", "score": 0.0}
+        return {"id": -10, "name": "admin", "score": 0.0, "privileges": []}
 
     for person in current_state["persons"]:
         if person["name"] == current_user():
@@ -359,8 +363,11 @@ def record_vote(user: str, person_id: int, operation: str, comment: str) -> None
                                                "comment": comment}
 
 @app.route("/api/persons/<int:person_id>/inc", methods=["POST"])
-def increase_score(person_id: int) -> tuple[Response, int] | tuple[Response, int] | Response:
-    # TODO add prevention so user can't vote for himself via API
+def increase_score(person_id: int) -> tuple[Response, int] | tuple[Response, int] | bool | Response:
+    # Nicht für eigene Person voten
+    if person_id == get_current_person()['id']:
+        return jsonify({"error": "Es kann nicht für die eigene Person abgestimmt werden."}), 428
+
     not_logged = ensure_logged_in_api()
     if not_logged:
         return not_logged
@@ -387,8 +394,11 @@ def increase_score(person_id: int) -> tuple[Response, int] | tuple[Response, int
         return jsonify({"version": update_version, "person": person})
 
 @app.route("/api/persons/<int:person_id>/dec", methods=["POST"])
-def decrease_score(person_id: int) -> tuple[Response, int] | tuple[Response, int] | Response:
-    # TODO add prevention so user can't vote for himself via API
+def decrease_score(person_id: int) -> tuple[Response, int] | tuple[Response, int] | bool | Response:
+    # Nicht für eigene Person voten
+    if person_id == get_current_person()['id']:
+        return jsonify({"error": "Es kann nicht für die eigene Person abgestimmt werden."}), 428
+
     not_logged = ensure_logged_in_api()
     if not_logged:
         return not_logged

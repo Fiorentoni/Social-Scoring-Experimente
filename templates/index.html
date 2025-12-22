@@ -432,6 +432,10 @@
         alert((data.error || 'Cooldown aktiv.') + ` Versuche es in ca. ${mins} Minute(n) erneut.`);
         return;
       }
+      if (res.status === 428) {
+        alert(data.error);
+        return;
+      }
       if (!res.ok) return;
       const data = await res.json();
       currentVersion = data.version || currentVersion;
