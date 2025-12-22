@@ -73,6 +73,7 @@
     .btn {
       border: none; border-radius: 10px; padding: 8px 20px; font-size: 18px; font-weight: 700;
       cursor: pointer; transition: transform 0.02s ease-in-out; margin-left: 10px; margin-right: 10px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     }
     .btn:active { transform: scale(0.98); }
     button:disabled {
@@ -158,7 +159,51 @@
         border-style: solid;
         border-color: transparent transparent transparent var(--bg); /* Erstellt ein Dreieck, das nach unten zeigt */
     }
-
+    #votesContainer {
+        max-width: 100%;
+    }
+    /* Grundlegende Listeneinstellungen (von 'votelist' auf 'vote-list' korrigiert, falls im HTML so verwendet) */
+    .votelist {
+        list-style: none; /* Entfernt die Standard-Aufzählungszeichen */
+        padding: 0;
+        color: #444;
+    }
+    /* Allgemeine Stilistik für Listeneinträge */
+    .vote-item {
+        margin-bottom: 10px;
+        padding: 15px;
+        border-radius: 10px; /* Abgerundete Ecken wie im Profilbild */
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); /* Dezenter Schatten */
+        display: flex;
+        flex-direction: column; /* Sorgt dafür, dass Kommentar und Details untereinander stehen */
+        transition: background-color 0.3s ease;
+    }
+    /* Farbe für Upvotes (helles Grün im Rosa-Kontext) */
+    .vote-item.upvote {
+        background-color: #e8f5e9; /* Sehr helles Grün */
+        border-left: 5px solid #4CAF50; /* Grüner Rand links */
+    }
+    /* Farbe für Downvotes (helles Rot im Rosa-Kontext) */
+    .vote-item.downvote {
+        background-color: #ffebee; /* Sehr helles Rot */
+        border-left: 5px solid #f44336; /* Roter Rand links */
+    }
+    /* Stil für die erste Span (Operation, Name) */
+    .person-vote {
+        font-weight: bold;
+        color: #333;
+    }
+    /* Stil für die zweite Span (Timestamp) */
+    .timestamp {
+        font-size: 0.7em;
+        color: #333;
+    }
+    /* Stil für die zweite Span (Kommentar) */
+    .comment {
+        color: #666;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
     .footer-note { color: var(--muted); font-size: 12px; margin-top: 8px; }
     @media (max-width: 900px) {
       .container { grid-template-columns: 1fr; }
@@ -186,7 +231,6 @@
   </style>
 </head>
 <body>
-<!-- Vorexistierende Maske; wird per jQuery ein-/ausgeblendet -->
 <div id="inputModal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modalTitle">
     <div class="modal__dialog" role="document">
         <h2 id="modalTitle"></h2>
@@ -201,23 +245,17 @@
 </div>
 
 <div class="container">
-    <!-- Linke Seite: Profil -->
     <div class="card profile-card">
       <h2>Dein Profil</h2>
       <div class="profile">
         <div class="avatar" id="userAvatar" title="Nutzer-Foto">
-          <!-- Falls du ein Foto einbindest, setze src und style.display = 'block' -->
           <img id="userAvatarImg" alt="Avatar">
           <span id="userInitials">DU</span>
         </div>
         <span style="font-size: 30px" id="userName">{{ display_name }}</span>
         <span style="font-size: 30px" id="userScore">{{ user_score }}</span>
         <div id="votesContainer">
-            <div id="vote1"></div>
-            <div id="vote2"></div>
-            <div id="vote3"></div>
-            <div id="vote4"></div>
-            <div id="vote5"></div>
+
         </div>
         <p>
            <button class="btn btn-logout" id="logoutButton" onclick="location.href='/logout';">Logout</button>
@@ -225,7 +263,6 @@
       </div>
     </div>
 
-    <!-- Rechte Seite: Tabelle -->
     <div class="card table-card">
       <h2>Highscore-Liste</h2>
       <table aria-label="Highscore-Liste">
@@ -416,30 +453,37 @@
     }
 
     function renderVoteLog(voteLog) {
-        for (let i = 0; i <= 5; i++) {
+        let totalHtml = '<ul class="votelist">'
+        for (let i = 0; i < 5; i++) {
             if (voteLog[i] == null) {
                 break;
             }
-            const id = 'vote' + (i+1); // vote-Divs starten bei 1
-            const div = document.getElementById(id);
 
-            const personName = voteLog[i]['person'];
+            let personName = voteLog[i]['person'];
             let operation = voteLog[i]['operation'];
             const timestamp = voteLog[i]['timestamp'];
             const comment = voteLog[i]['comment'];
+            let className;
 
             if (operation === "inc") {
                 operation = "Upvote";
+                className = "vote-item upvote"
             }
             else {
                 operation = "Downvote";
+                className = "vote-item downvote";
             }
 
-            let html = `<span>${operation} von ${personName}, ${timestamp}</span>`;
-            html += `<span>${comment}</span>`;
+            if (personName === "admin") personName = 'Der Staat';
 
-            div.innerHTML = html;
+            let html = `<li class="${className}"><span class="person-vote">${operation} von ${personName}</span><span class="timestamp">${timestamp}</span>`;
+            html += `<span class="comment">${comment}</span></li>`;
+
+            totalHtml += html;
         }
+        totalHtml += '</ul>';
+        const votesContainer = document.getElementById('votesContainer');
+        votesContainer.innerHTML = totalHtml;
     }
 
     async function initialLoad() {

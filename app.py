@@ -397,13 +397,15 @@ def record_vote(user: str, person_id: int, operation: str, comment: str) -> None
 
 @app.route("/api/persons/<int:person_id>/inc", methods=["POST"])
 def increase_score(person_id: int) -> tuple[Response, int] | tuple[Response, int] | bool | Response:
+    not_logged = ensure_logged_in_api()
+    if not_logged:
+        return not_logged
+
     # Nicht für eigene Person voten
     if person_id == get_current_person()['id']:
         return jsonify({"error": "Es kann nicht für die eigene Person abgestimmt werden."}), 428
 
-    not_logged = ensure_logged_in_api()
-    if not_logged:
-        return not_logged
+    # TODO was wenn vote schon 5.0?
     user = current_user()
     current_person = get_current_person()
     with state_lock:
@@ -428,13 +430,16 @@ def increase_score(person_id: int) -> tuple[Response, int] | tuple[Response, int
 
 @app.route("/api/persons/<int:person_id>/dec", methods=["POST"])
 def decrease_score(person_id: int) -> tuple[Response, int] | tuple[Response, int] | bool | Response:
+    not_logged = ensure_logged_in_api()
+    if not_logged:
+        return not_logged
+
     # Nicht für eigene Person voten
     if person_id == get_current_person()['id']:
         return jsonify({"error": "Es kann nicht für die eigene Person abgestimmt werden."}), 428
 
-    not_logged = ensure_logged_in_api()
-    if not_logged:
-        return not_logged
+    #TODO was wenn vote schon 0.0?
+
     user = current_user()
     current_person = get_current_person()
     with state_lock:
