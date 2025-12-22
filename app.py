@@ -165,11 +165,15 @@ def convert_from_iso_zulu(string: str) -> datetime:
 
 def get_ranking_category(person):
     sorted_scorelist = get_sorted_scorelist()
-    # todo vergleichen mit vorheriger Kategorie und ggf. bei gleicher Punktzahl gleiche kategorie
 
     for user in sorted_scorelist:
         if user['name'] == person['name']:
             ranking = sorted_scorelist.index(user) + 1 # weil liste bei 0 anfängt!
+            # Wenn gleiche Punktzahl, dann Ranking aufstufen
+            if ranking != 1:
+                while ranking != 1 and sorted_scorelist[ranking-1]['score'] == sorted_scorelist[ranking-2]['score']:
+                    ranking = ranking - 1
+
             ranking_percentage = ranking / len(sorted_scorelist) * 100
             ranking_percentages_list = list(RANKING_PERCENTAGES)
             match ranking_percentage:
@@ -199,6 +203,8 @@ def get_ranking_category(person):
                     return "Ungültiger Wert!"
 
             # TODO was wenn keiner gefunden?
+    return None
+
 
 def get_vote_weight(person):
     if person["name"] == "admin":
@@ -314,6 +320,8 @@ def get_current_person():
     if current_user() == "admin":
         return {"id": -10, "name": "admin", "score": 0.0, "privileges": []}
 
+    current_person = None
+
     for person in current_state["persons"]:
         if person["name"] == current_user():
             current_person = person
@@ -361,6 +369,8 @@ def get_persons() -> tuple[Response, int] | Response:
                         "own_vote_log": get_structured_vote_log(current_state["vote_log"].get(str(own_id), {}))})
 
 #TODO ergänze "gelesen" bei VoteLog und das automatische Ausblenden / alternativ manuell gelesen markierne
+# TODO laternativ: Votes haben id und bei "Gelesen" wird das Vote mit der entsprechenden Id gelöscht
+#  (zu viele Abfragen aber; stattdessen als gelöscht markiert nur?)
 
 def can_vote_now(user: str, person_id: int, desired_operation: str) -> tuple[bool, None] | tuple[bool, Any]:
     """
@@ -388,6 +398,8 @@ def record_vote(user: str, person_id: int, operation: str, comment: str) -> None
     Vote im Log vermerken (Zeitpunkt + Operation).
     Muss unter state_lock aufgerufen werden.
     """
+
+    #TODO votes nachzählen pro Person - wenn zu viele, dann löschen, um Speicherplatz zu sparen
     # Wenn Key im Dictionary, dann returne ihn. Ansonsten setze default.
     vote_log = current_state.setdefault("vote_log", {})
     vote_log_per_person = vote_log.setdefault(str(person_id), {})
