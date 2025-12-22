@@ -75,6 +75,10 @@
       cursor: pointer; transition: transform 0.02s ease-in-out; margin-left: 10px; margin-right: 10px;
     }
     .btn:active { transform: scale(0.98); }
+    button:disabled {
+        cursor: not-allowed;       /* Zeigt ein "Stoppschild" beim Hover */
+        opacity: 0.05;              /* Macht ihn leicht transparent */
+    }
     .btn:hover { background: rgba(237, 163, 251, 0.85); }
     .btn:focus-visible {
         outline: none;
@@ -125,29 +129,32 @@
 
         position: absolute;
         z-index: 1;
-        left: -5%;
+        left: -10%;
+        top: -30px;
         transform: translateX(-50%);
 
-        width: 150px;
-        font-size: 0.75rem; /* Bessere Lesbarkeit als 10px */
+        max-width: 280px;           /* Verhindert, dass der Tooltip zu breit wird */
+        white-space: normal;        /* Erlaubt normalen Zeilenumbruch */
+        overflow-wrap: break-word;  /* Bricht auch extrem lange Wörter (z.B. URLs) um */
+        word-break: break-word;     /* Zusätzliche Absicherung für den Umbruch */
         line-height: 1.4;
+        font-size: 1rem; /* Bessere Lesbarkeit als 10px */
         background-color: var(--bg);
         color: white;
         border-bottom: transparent;
         text-align: center;
         border-radius: 6px;
-        padding: 8px 10px; /* Etwas mehr Padding für mehr Luft */
+        padding-top: 0;
+        padding-bottom: 0;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); /* Subtiler Schatten für Tiefe */
     }
-
     /* Pseudo-Element für den kleinen Pfeil nach unten */
     .privileges::after {
         content: "";
         position: absolute;
-        top: 40%; /* Platziert den Pfeil direkt unterhalb des Tooltip-Körpers */
-        left: 103%;
-        margin-left: -5px; /* Zentriert den Pfeil unter dem Tooltip */
-        border-width: 10px;
+        top: 50px;
+        left: 100%;
+        border-width: 12px;
         border-style: solid;
         border-color: transparent transparent transparent var(--bg); /* Erstellt ein Dreieck, das nach unten zeigt */
     }
@@ -264,7 +271,7 @@
         // unsichtbare Privilegien-Zelle
         const tdPrivileges = document.createElement('td');
         tdPrivileges.className = 'privileges';
-        tdPrivileges.textContent = person['privileges'];
+        tdPrivileges.innerHTML = structurePrivileges(person['privileges']);
 
         // Info-Zelle
         const tdInfo = document.createElement('td');
@@ -299,44 +306,90 @@
         // Aktionen-Zelle
         const tdActions = document.createElement('td');
         tdActions.className = 'actions';
-        const btnPlus = document.createElement('button');
-        btnPlus.className = 'btn btn-plus';
-        btnPlus.textContent = '+';
-        btnPlus.addEventListener('click', () => vote(person.id, 'inc', null));
 
-        const btnPlusMessage = document.createElement('button');
-        btnPlusMessage.className = 'btn btn-plus';
-        btnPlusMessage.style.display = 'inline-flex';
-        btnPlusMessage.style.alignItems = 'center';
-        btnPlusMessage.style.gap = '8px';
-        const textNode = document.createTextNode('+');
-        const icon = document.createElement('i');
-        icon.className = 'fa-regular fa-message';
-        btnPlusMessage.appendChild(textNode);
-        btnPlusMessage.appendChild(icon);
-        btnPlusMessage.addEventListener('click', () => openModal(person.id, person.name, 'inc'));
+        if (person.name !== '{{ display_name }}') {
+            const btnPlus = document.createElement('button');
+            btnPlus.className = 'btn btn-plus';
+            btnPlus.textContent = '+';
+            btnPlus.addEventListener('click', () => vote(person.id, 'inc', null));
 
-        const btnMinusMessage = document.createElement('button');
-        btnMinusMessage.className = 'btn btn-minus';
-        btnMinusMessage.style.display = 'inline-flex';
-        btnMinusMessage.style.alignItems = 'center';
-        btnMinusMessage.style.gap = '8px';
-        const textNode2 = document.createTextNode('-');
-        const icon2 = document.createElement('i');
-        icon2.className = 'fa-regular fa-message';
-        btnMinusMessage.appendChild(textNode2);
-        btnMinusMessage.appendChild(icon2);
-        btnMinusMessage.addEventListener('click', () => openModal(person.id, person.name, 'dec'));
+            const btnPlusMessage = document.createElement('button');
+            btnPlusMessage.className = 'btn btn-plus';
+            btnPlusMessage.style.display = 'inline-flex';
+            btnPlusMessage.style.alignItems = 'center';
+            btnPlusMessage.style.gap = '8px';
+            const textNode = document.createTextNode('+');
+            const icon = document.createElement('i');
+            icon.className = 'fa-regular fa-message';
+            btnPlusMessage.appendChild(textNode);
+            btnPlusMessage.appendChild(icon);
+            btnPlusMessage.addEventListener('click', () => openModal(person.id, person.name, 'inc'));
 
-        const btnMinus = document.createElement('button');
-        btnMinus.className = 'btn btn-minus';
-        btnMinus.textContent = '−';
-        btnMinus.addEventListener('click', () => vote(person.id, 'dec', null));
+            const btnMinusMessage = document.createElement('button');
+            btnMinusMessage.className = 'btn btn-minus';
+            btnMinusMessage.style.display = 'inline-flex';
+            btnMinusMessage.style.alignItems = 'center';
+            btnMinusMessage.style.gap = '8px';
+            const textNode2 = document.createTextNode('-');
+            const icon2 = document.createElement('i');
+            icon2.className = 'fa-regular fa-message';
+            btnMinusMessage.appendChild(textNode2);
+            btnMinusMessage.appendChild(icon2);
+            btnMinusMessage.addEventListener('click', () => openModal(person.id, person.name, 'dec'));
 
-        tdActions.appendChild(btnPlus);
-        tdActions.appendChild(btnPlusMessage);
-        tdActions.appendChild(btnMinusMessage);
-        tdActions.appendChild(btnMinus);
+            const btnMinus = document.createElement('button');
+            btnMinus.className = 'btn btn-minus';
+            btnMinus.textContent = '−';
+            btnMinus.addEventListener('click', () => vote(person.id, 'dec', null));
+
+            tdActions.appendChild(btnPlus);
+            tdActions.appendChild(btnPlusMessage);
+            tdActions.appendChild(btnMinusMessage);
+            tdActions.appendChild(btnMinus);
+        }
+        // ... sonst nur disabled Buttons anzeigen
+            // TODO auch inaktive Buttons nach Operation disablen!
+        else {
+            const btnPlus = document.createElement('button');
+            btnPlus.className = 'btn btn-plus btn-greyed';
+            btnPlus.textContent = '+';
+            btnPlus.disabled = true;
+
+            const btnPlusMessage = document.createElement('button');
+            btnPlusMessage.className = 'btn btn-plus btn-greyed';
+            btnPlusMessage.style.display = 'inline-flex';
+            btnPlusMessage.style.alignItems = 'center';
+            btnPlusMessage.style.gap = '8px';
+            const textNode = document.createTextNode('+');
+            const icon = document.createElement('i');
+            icon.className = 'fa-regular fa-message';
+            btnPlusMessage.appendChild(textNode);
+            btnPlusMessage.appendChild(icon);
+            btnPlusMessage.disabled = true;
+
+            const btnMinusMessage = document.createElement('button');
+            btnMinusMessage.className = 'btn btn-minus btn-greyed';
+            btnMinusMessage.style.display = 'inline-flex';
+            btnMinusMessage.style.alignItems = 'center';
+            btnMinusMessage.style.gap = '8px';
+            const textNode2 = document.createTextNode('-');
+            const icon2 = document.createElement('i');
+            icon2.className = 'fa-regular fa-message';
+            btnMinusMessage.appendChild(textNode2);
+            btnMinusMessage.appendChild(icon2);
+            btnMinusMessage.disabled = true;
+
+            const btnMinus = document.createElement('button');
+            btnMinus.className = 'btn btn-minus btn-greyed';
+            btnMinus.textContent = '−';
+            btnMinus.disabled = true;
+
+            tdActions.appendChild(btnPlus);
+            tdActions.appendChild(btnPlusMessage);
+            tdActions.appendChild(btnMinusMessage);
+            tdActions.appendChild(btnMinus);
+        }
+
         tr.appendChild(tdInfo);
         tr.appendChild(tdPrivileges);
         tr.appendChild(tdPhoto);
@@ -345,6 +398,17 @@
         tr.appendChild(tdActions);
         personsBody.appendChild(tr);
       }
+    }
+
+    function structurePrivileges(privileges) {
+        let html = '<ul style="margin-left: 10px; padding-left: 5px;">';
+        for (const privilege of privileges) {
+            let color = privilege[1];
+            html += '<li style="color:'+color+'; margin: 0; padding: 0; ">' + privilege[0] + '</li>';
+        }
+        html += '</ul>';
+
+        return html;
     }
 
     async function initialLoad() {

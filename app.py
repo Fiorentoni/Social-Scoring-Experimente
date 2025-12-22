@@ -30,8 +30,9 @@ FILENAME = 'score.json'
 # test
 
 HEADERS = {
-    "Authorization": f"token {os.environ.get('GITHUB_TOKEN')}",
-    "Accept": "application/vnd.github.v3+json"
+    "Authorization": f"Bearer {os.environ.get('GITHUB_TOKEN')}",
+    "Accept": "application/vnd.github.v3+json",
+    "X-GitHub-Api-Version": "2022-11-28"
 }
 
 STARTING_SCORE = 4.0
@@ -95,7 +96,7 @@ def get_gist_data():
         file_data = gist_content['files'][FILENAME]['content']
         return json.loads(file_data)
     else:
-        print("Fehler beim Laden:", response.status_code)
+        print("Fehler beim Laden:", response.text)
         return {}
 
 def update_gist_data(new_data_list):
@@ -112,6 +113,7 @@ def update_gist_data(new_data_list):
                               json=payload)
     return response.status_code == 200
 
+# TODO requests verhindern durch caching, sonst vielleicht Probleme mit GIT-TOKEN RATE LIMIT?!
 
 def load_current_state() -> Any:
     global update_version
@@ -358,6 +360,7 @@ def record_vote(user: str, person_id: int, operation: str, comment: str) -> None
 
 @app.route("/api/persons/<int:person_id>/inc", methods=["POST"])
 def increase_score(person_id: int) -> tuple[Response, int] | tuple[Response, int] | Response:
+    # TODO add prevention so user can't vote for himself via API
     not_logged = ensure_logged_in_api()
     if not_logged:
         return not_logged
@@ -385,6 +388,7 @@ def increase_score(person_id: int) -> tuple[Response, int] | tuple[Response, int
 
 @app.route("/api/persons/<int:person_id>/dec", methods=["POST"])
 def decrease_score(person_id: int) -> tuple[Response, int] | tuple[Response, int] | Response:
+    # TODO add prevention so user can't vote for himself via API
     not_logged = ensure_logged_in_api()
     if not_logged:
         return not_logged
