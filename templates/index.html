@@ -78,7 +78,7 @@
         .btn:active { transform: scale(0.98); }
         button:disabled {
             cursor: not-allowed;       /* Zeigt ein "Stoppschild" beim Hover */
-            opacity: 0.05;              /* Macht ihn leicht transparent */
+            opacity: 0.15;              /* Macht ihn leicht transparent */
         }
         .btn:hover { background: rgba(237, 163, 251, 0.85); }
         .btn:focus-visible {
@@ -303,7 +303,7 @@
         return (a + b).toUpperCase();
     }
 
-    function renderPersons(persons) {
+    function renderPersons(persons, plusCooldowns, minusCooldowns) {
         personsBody.innerHTML = '';
 
         persons.sort(function(a, b) {return b['score']-a['score']});
@@ -351,6 +351,7 @@
             let errorTooltip = '';
             let buttonPlusDisabled = false;
             let buttonMinusDisabled = false;
+            let disabledClass;
 
             if (person.name === '{{ display_name }}') {
                 // Update ownScore
@@ -360,7 +361,32 @@
                 buttonPlusDisabled = true;
                 buttonMinusDisabled = true;
                 errorTooltip = "Man kann nicht für sich selbst voten!"
+                disabledClass = "fa-solid fa-user-lock";
             }
+            else if (person.score >= 5) {
+                buttonPlusDisabled = true;
+                errorTooltip = "Die Person hat schon die höchste Punktzahl!"
+                disabledClass = "fa-solid fa-temperature-arrow-up";
+            }
+            else if (person.score <= 0) {
+                buttonMinusDisabled = true;
+                errorTooltip = "Die Person hat schon die niedrigste Punktzahl!"
+                disabledClass = "fa-solid fa-temperature-arrow-down";
+            }
+            else {
+                if (plusCooldowns.includes(person.name)) {
+                    buttonPlusDisabled = true;
+                    errorTooltip = "Cooldown in Effekt"
+                    disabledClass = "fa-regular fa-clock";
+                }
+                if (minusCooldowns.includes(person.name)) {
+                    buttonMinusDisabled = true;
+                    errorTooltip = "Cooldown in Effekt"
+                    disabledClass = "fa-regular fa-clock";
+                }
+            }
+
+
 
 
 
@@ -369,82 +395,86 @@
             tdActions.className = 'actions';
 
             const btnPlus = document.createElement('button');
+            const icon = document.createElement('i');
+            const textNode = document.createTextNode('+');
             if (buttonPlusDisabled) {
                 btnPlus.className = 'btn btn-plus btn-greyed';
                 btnPlus.title = errorTooltip;
+                btnPlus.disabled = true;
+                icon.className = disabledClass
+                textNode.textContent = '';
             }
             else {
                 btnPlus.className = 'btn btn-plus';
-            }
-            btnPlus.textContent = '+';
-            if (buttonPlusDisabled) {
-                btnPlus.disabled = true;
-            }
-            else {
                 btnPlus.addEventListener('click', () => vote(person.id, 'inc', null));
+                icon.className = '';
             }
+            btnPlus.style.display = 'inline-flex';
+            btnPlus.style.alignItems = 'center';
+            btnPlus.style.gap = '8px';
+            btnPlus.appendChild(textNode);
+            btnPlus.appendChild(icon);
 
             const btnPlusMessage = document.createElement('button');
+            const icon2 = document.createElement('i');
+            const textNode2 = document.createTextNode('+');
             if (buttonPlusDisabled) {
                 btnPlusMessage.className = 'btn btn-plus btn-greyed';
                 btnPlusMessage.title = errorTooltip;
+                btnPlusMessage.disabled = true;
+                icon2.className = disabledClass;
             }
             else {
-                btnPlusMessage.className = 'btn btn-plus';
+                btnPlusMessage.className = 'btn btn-plus'
+                btnPlusMessage.addEventListener('click', () => openModal(person.id, person.name, 'inc'));
+                icon2.className = 'fa-regular fa-message';
             }
             btnPlusMessage.style.display = 'inline-flex';
             btnPlusMessage.style.alignItems = 'center';
             btnPlusMessage.style.gap = '8px';
-            const textNode = document.createTextNode('+');
-            const icon = document.createElement('i');
-            icon.className = 'fa-regular fa-message';
-            btnPlusMessage.appendChild(textNode);
-            btnPlusMessage.appendChild(icon);
-            if (buttonPlusDisabled) {
-                btnPlusMessage.disabled = true;
-            }
-            else {
-                btnPlusMessage.addEventListener('click', () => openModal(person.id, person.name, 'inc'));
-            }
+            btnPlusMessage.appendChild(textNode2);
+            btnPlusMessage.appendChild(icon2);
 
             const btnMinusMessage = document.createElement('button');
+            const icon3 = document.createElement('i');
+            const textNode3 = document.createTextNode('-');
             if (buttonMinusDisabled) {
-                btnMinusMessage.className = 'btn btn-minus btn-greyed';
+                btnMinusMessage.className = 'btn btn-minus btn-greyed' ;
                 btnMinusMessage.title = errorTooltip;
+                btnMinusMessage.disabled = true;
+                icon3.className = disabledClass;
             }
             else {
                 btnMinusMessage.className = 'btn btn-minus';
+                icon3.className = 'fa-regular fa-message';
+                btnMinusMessage.addEventListener('click', () => openModal(person.id, person.name, 'dec'));
             }
             btnMinusMessage.style.display = 'inline-flex';
             btnMinusMessage.style.alignItems = 'center';
             btnMinusMessage.style.gap = '8px';
-            const textNode2 = document.createTextNode('-');
-            const icon2 = document.createElement('i');
-            icon2.className = 'fa-regular fa-message';
-            btnMinusMessage.appendChild(textNode2);
-            btnMinusMessage.appendChild(icon2);
-            if (buttonMinusDisabled) {
-                btnMinusMessage.disabled = true;
-            }
-            else {
-                btnMinusMessage.addEventListener('click', () => openModal(person.id, person.name, 'dec'));
-            }
+            btnMinusMessage.appendChild(textNode3);
+            btnMinusMessage.appendChild(icon3);
 
             const btnMinus = document.createElement('button');
+            const icon4 = document.createElement('i');
+            const textNode4 = document.createTextNode('-');
             if (buttonMinusDisabled) {
                 btnMinus.className = 'btn btn-minus btn-greyed';
                 btnMinus.title = errorTooltip;
+                btnMinus.disabled = true;
+                icon4.className = disabledClass;
+                textNode4.textContent = '';
             }
             else {
                 btnMinus.className = 'btn btn-minus';
-            }
-            btnMinus.textContent = '−';
-            if (buttonMinusDisabled) {
-                btnMinus.disabled = true;
-            }
-            else {
+                icon4.className = '';
                 btnMinus.addEventListener('click', () => vote(person.id, 'dec', null));
             }
+            btnMinus.style.display = 'inline-flex';
+            btnMinus.style.alignItems = 'center';
+            btnMinus.style.gap = '8px';
+            btnMinus.appendChild(textNode4);
+            btnMinus.appendChild(icon4);
 
             tdActions.appendChild(btnPlus);
             tdActions.appendChild(btnPlusMessage);
@@ -557,7 +587,7 @@
         const res = await fetch('/api/persons');
         const data = await res.json();
         currentVersion = data.version || 0;
-        renderPersons(data.persons || []);
+        renderPersons(data.persons, data.plusCooldowns, data.minusCooldowns || [], [], []);
         voteLog = data.own_vote_log;
         renderVoteLog(voteLog, voteLevel || [], voteLevel);
     }
@@ -571,9 +601,7 @@
             if (res.status === 401) { window.location.href = '/login'; return; }
             if (res.status === 429) {
                 const data = await res.json();
-                const secs = data.retry_after_seconds ?? 0;
-                const mins = Math.ceil(secs / 60);
-                alert((data.error || 'Cooldown aktiv.') + ` Versuche es in ca. ${mins} Minute(n) erneut.`);
+                alert(data.error);
                 return;
             }
             if (res.status === 428) {
@@ -602,7 +630,7 @@
             const data = await res.json();
             if (data.changed) {
                 currentVersion = data.version || currentVersion;
-                renderPersons(data.persons || []);
+                renderPersons(data.persons, data.plusCooldowns, data.minusCooldowns || [], [], []);
                 voteLog = data.own_vote_log;
                 renderVoteLog(voteLog, voteLevel || [], voteLevel);
             } else {

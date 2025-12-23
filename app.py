@@ -39,7 +39,6 @@ STARTING_SCORE = 4.0
 VOTE_WEIGHT_MODIFIER = 1 #TODO halbieren?
 VOTE_WEIGHT_ADMIN = 0.2
 DEFAULT_VOTE_WEIGHT = 0.1
-WEIGHTS_ENABLED_MIN_VERSION = 20
 RANKING_PERCENTAGES = {
     9.10: 1,
     18.19: 2,
@@ -121,6 +120,8 @@ def load_current_state() -> Any:
     global update_version
     data = get_gist_data()
 
+    # TODO Prevent overwriting of GIST file!
+    # TODO do not SAVE privileges to JSON!
     with gist_lock:
         if not data:
             data = {
@@ -368,16 +369,33 @@ def get_persons() -> tuple[Response, int] | Response:
         return not_logged
 
     own_id = get_current_person()["id"]
+    cooldowns = get_current_cooldowns()
+    plus_cooldowns = cooldowns[0]
+    minus_cooldowns = cooldowns[1]
 
     with state_lock:
-        return jsonify({"version": update_version, "persons": current_state["persons"],
+        return jsonify({"version": update_version, "persons": current_state["persons"], "plusCooldowns": plus_cooldowns,
+                        "minusCooldowns": minus_cooldowns,
                         "own_vote_log": get_structured_vote_log(current_state["vote_log"].get(str(own_id), {}))})
 
 #TODO ergänze "gelesen" bei VoteLog und das automatische Ausblenden / alternativ manuell gelesen markierne
 # TODO laternativ: Votes haben id und bei "Gelesen" wird das Vote mit der entsprechenden Id gelöscht
 #  (zu viele Abfragen aber; stattdessen als gelöscht markiert nur?)
 
-def can_vote_now(user: str, person_id: int, desired_operation: str) -> tuple[bool, None] | tuple[bool, Any]:
+def get_current_cooldowns():
+    plus_cooldowns = []
+    minus_cooldowns = []
+    user = current_user()
+
+    for person in current_state["persons"]:
+        if not can_vote_now(user, person["id"], "inc"):
+            plus_cooldowns.append(person["name"])
+        if not can_vote_now(user, person["id"], "dec"):
+            minus_cooldowns.append(person["name"])
+
+    return plus_cooldowns, minus_cooldowns
+
+def can_vote_now(user: str, person_id: int, desired_operation: str) -> tuple[bool, None] | bool:
     """
     True/None, wenn voten erlaubt.
     False/remaining_timedelta, wenn gesperrt.
@@ -394,10 +412,11 @@ def can_vote_now(user: str, person_id: int, desired_operation: str) -> tuple[boo
         # Defekter Eintrag? Vorsichtshalber sperre nicht.
         return True, None
     delta = get_utc_now() - last_timestamp
+    remaining_cooldown = VOTE_COOLDOWN_HOURS - delta
     if delta >= VOTE_COOLDOWN_HOURS:
-        return True, None
+        return True
     else:
-        return False, (VOTE_COOLDOWN_HOURS - delta)
+        return False
 def record_vote(user: str, person_id: int, operation: str, comment: str) -> None:
     """
     Vote im Log vermerken (Zeitpunkt + Operation).
@@ -425,12 +444,10 @@ def increase_score(person_id: int) -> tuple[Response, int] | tuple[Response, int
     user = current_user()
     current_person = get_current_person()
     with state_lock:
-        allowed, remaining = can_vote_now(user, person_id, "inc")
+        allowed = can_vote_now(user, person_id, "inc")
         if not allowed:
             return jsonify({
-                "error": "Cooldown aktiv: Du kannst diese Person nur alle 12 Stunden upvoten.",
-                "retry_after_seconds": int(remaining.total_seconds())
-            }), 429
+                "error": "Cooldown aktiv: Du kannst diese Person nur alle 12 Stunden upvoten.",}), 429
 
         comment = request.form.get("comment")
 
@@ -460,12 +477,10 @@ def decrease_score(person_id: int) -> tuple[Response, int] | tuple[Response, int
     user = current_user()
     current_person = get_current_person()
     with state_lock:
-        allowed, remaining = can_vote_now(user, person_id, "dec")
+        allowed = can_vote_now(user, person_id, "dec")
         if not allowed:
             return jsonify({
-                "error": "Cooldown aktiv: Du kannst diese Person nur alle 12 Stunden downvoten.",
-                "retry_after_seconds": int(remaining.total_seconds())
-            }), 429
+                "error": "Cooldown aktiv: Du kannst diese Person nur alle 12 Stunden downvoten.",}), 429
 
         comment = request.form.get("comment")
 
@@ -495,12 +510,16 @@ def long_poll_updates() -> tuple[Response, int] | Response:
         since = 0
 
     own_id = get_current_person()["id"]
+    cooldowns = get_current_cooldowns()
+    plus_cooldowns = cooldowns[0]
+    minus_cooldowns = cooldowns[1]
 #
     with version_condition:
         if update_version <= since:
             version_condition.wait(timeout=25.0)
         changed = update_version > since
         return jsonify({"changed": changed, "version": update_version, "persons": current_state["persons"],
+                        "plusCooldowns": plus_cooldowns, "minusCooldowns": minus_cooldowns,
                         "own_vote_log": get_structured_vote_log(current_state["vote_log"].get(str(own_id), {}))}), 200
 
 
