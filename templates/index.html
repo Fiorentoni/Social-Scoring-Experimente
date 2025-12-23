@@ -252,10 +252,12 @@
           <img id="userAvatarImg" alt="Avatar">
           <span id="userInitials">DU</span>
         </div>
-        <span style="font-size: 30px" id="userName">{{ display_name }}</span>
-        <span style="font-size: 30px" id="userScore">{{ user_score }}</span>
+        <span style="font-size: 30px; font-weight: bold;" id="userName">{{ display_name }}</span>
+        <span style="font-size: 40px; font-weight: bold" id="userScore">{% if user_score == 0 %}{% else %}{{ user_score }}{% endif %}</span>
         <div id="votesContainer"></div>
-        <button class="btn btn-send" id="moreVotesButton" onclick="showNextVotes()">Noch X weitere (max. 15)</button>
+        {% if display_name != "Admin" %}
+          <button class="btn btn-send" id="moreVotesButton" onclick="showNextVotes()">Noch X weitere Kommentare (max. 15)</button>
+        {% endif %}
           <p></p>
         <button class="btn btn-cancel" id="logoutButton" onclick="location.href='/logout';">Logout</button>
       </div>
@@ -392,6 +394,10 @@
         // ... sonst nur disabled Buttons anzeigen
             // TODO auch inaktive Buttons nach Operation disablen!
         else {
+            // Update ownScore
+            const ownScore = document.getElementById('userScore');
+            ownScore.textContent = person.score;
+
             const btnPlus = document.createElement('button');
             btnPlus.className = 'btn btn-plus btn-greyed';
             btnPlus.textContent = '+';
@@ -502,8 +508,14 @@
         remainingVotes = length - lastIndex-1;
         if (remainingVotes < 0) remainingVotes = 0;
         const button = document.getElementById('moreVotesButton');
-        button.textContent = `Noch ${remainingVotes} weitere (max. 15)`;
-
+        if (button !== null) {
+            if (remainingVotes > 0) {
+                button.textContent = `Noch ${remainingVotes} weitere Kommentare (max. 15)`;
+            }
+            else {
+                button.textContent = 'Zurück (keine weiteren Kommentare)'
+            }
+        }
         totalHtml += '</ul>';
         const votesContainer = document.getElementById('votesContainer');
         votesContainer.innerHTML = "";
