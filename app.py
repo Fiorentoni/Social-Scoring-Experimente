@@ -67,6 +67,8 @@ VOTE_WEIGHTS = {
 }
 VOTE_COOLDOWN_HOURS = timedelta(hours=12)
 
+MAX_SIZE_VOTE_LOG = 15
+
 
 USERS = {
     "Annika": {"display_name": "Annika", "password": "latein"},
@@ -209,6 +211,8 @@ def get_ranking_category(person):
 
 
 def get_vote_weight(person):
+    global current_state
+
     if person["name"] == "admin":
         return VOTE_WEIGHT_ADMIN * VOTE_WEIGHT_MODIFIER
 
@@ -251,6 +255,8 @@ def get_privileges(person):
     return privileges
 
 def get_sorted_scorelist():
+    global current_state
+
     return sorted(current_state["persons"], key = lambda person: person["score"], reverse = True)
 
 def add_privileges_to_state(state):
@@ -322,6 +328,8 @@ def render_index() -> Response | str:
                            user_score=user_score)
 
 def get_current_person():
+    global current_state
+
     if current_user() == "admin":
         return {"id": -10, "name": "admin", "score": 0.0, "privileges": []}
 
@@ -333,11 +341,11 @@ def get_current_person():
 
     return current_person
 
-def get_structured_vote_log(own_vote_log):
+def get_structured_vote_log(vote_log):
     flat_list = []
 
     # 1. Struktur auflösen (Flatten)
-    for people in own_vote_log.items():
+    for people in vote_log.items():
         person_name = people[0]
         for actions in people[1].items():
             action_type = actions[0]
@@ -362,11 +370,66 @@ def get_structured_vote_log(own_vote_log):
 
     return flat_list
 
+def cut_vote_log():
+    global current_state
+
+    # Vote-Log aus dem globalen State abrufen
+    # Struktur: {"1": [votes], "2": [votes], ...}
+    vote_log = current_state["vote_log"]
+
+    if not vote_log:
+        return
+
+    flat_list = []
+    # Über jede Person (Key) im Log iterieren
+    for person in vote_log:
+        for votedBy in vote_log[person]:
+            for vote in vote_log[person][votedBy]:
+                flat_entry = {
+                    "person": votedBy,
+                    "operation": vote,
+                    "timestamp": vote_log[person][votedBy][vote]["timestamp"],
+                    "comment": vote_log[person][votedBy][vote]["comment"]
+                }
+                # Votes, deren Cooldown abgelaufen ist und die keinen Kommentar haben, kann man weglassen
+                timestamp_dt = convert_from_iso_zulu(flat_entry["timestamp"])
+                delta = get_utc_now() - timestamp_dt
+                if flat_entry["comment"] != "null" or delta <= VOTE_COOLDOWN_HOURS:
+                    flat_list.append(flat_entry)
+
+        # Nach Zeit sortieren
+        flat_list.sort(key=lambda x: x["timestamp"], reverse=True)
+
+        # Auf die 15 neuesten Einträge kürzen
+        kept_entries = flat_list[:MAX_SIZE_VOTE_LOG]
+
+        # Das Dictionary für diese Person neu aufbauen
+        new_person_vote_log = {}
+        for entry in kept_entries:
+            voter = entry["person"]
+            operation = entry["operation"]
+            timestamp = entry["timestamp"]
+            comment = entry["comment"]
+
+            if voter not in new_person_vote_log:
+                new_person_vote_log[voter] = {}
+
+            # TODO add eben operation!
+            new_person_vote_log[voter][operation]["timestamp"] = entry["timestamp"]
+            new_person_vote_log[voter][operation]["comment"] = entry["comment"]
+
+            # Den aktualisierten State zurückschreiben
+            current_state["vote_log"][person] = new_person_vote_log
+
 @app.route("/api/persons", methods=["GET"])
 def get_persons() -> tuple[Response, int] | Response:
+    global current_state
+
     not_logged = ensure_logged_in_api()
     if not_logged:
         return not_logged
+
+    cut_vote_log()
 
     own_id = get_current_person()["id"]
     cooldowns = get_current_cooldowns()
@@ -383,6 +446,8 @@ def get_persons() -> tuple[Response, int] | Response:
 #  (zu viele Abfragen aber; stattdessen als gelöscht markiert nur?)
 
 def get_current_cooldowns():
+    global current_state
+
     plus_cooldowns = []
     minus_cooldowns = []
     user = current_user()
@@ -400,6 +465,8 @@ def can_vote_now(user: str, person_id: int, desired_operation: str) -> tuple[boo
     True/None, wenn voten erlaubt.
     False/remaining_timedelta, wenn gesperrt.
     """
+    global current_state
+
     vote_log = current_state.get("vote_log", {})
     vote_log_per_person = vote_log.get(str(person_id), {})
     vote_log_per_person_for_user = vote_log_per_person.get(user, {})
@@ -413,15 +480,17 @@ def can_vote_now(user: str, person_id: int, desired_operation: str) -> tuple[boo
         return True, None
     delta = get_utc_now() - last_timestamp
     remaining_cooldown = VOTE_COOLDOWN_HOURS - delta
-    if delta >= VOTE_COOLDOWN_HOURS:
+    if delta >= VOTE_COOLDOWN_HOURS: # TODO fix
         return True
     else:
         return False
+
 def record_vote(user: str, person_id: int, operation: str, comment: str) -> None:
     """
     Vote im Log vermerken (Zeitpunkt + Operation).
     Muss unter state_lock aufgerufen werden.
     """
+    global current_state
 
     #TODO votes nachzählen pro Person - wenn zu viele, dann löschen, um Speicherplatz zu sparen
     # Wenn Key im Dictionary, dann returne ihn. Ansonsten setze default.
@@ -433,6 +502,8 @@ def record_vote(user: str, person_id: int, operation: str, comment: str) -> None
 
 @app.route("/api/persons/<int:person_id>/inc", methods=["POST"])
 def increase_score(person_id: int) -> tuple[Response, int] | tuple[Response, int] | bool | Response:
+    global current_state
+
     not_logged = ensure_logged_in_api()
     if not_logged:
         return not_logged
@@ -466,6 +537,8 @@ def increase_score(person_id: int) -> tuple[Response, int] | tuple[Response, int
 
 @app.route("/api/persons/<int:person_id>/dec", methods=["POST"])
 def decrease_score(person_id: int) -> tuple[Response, int] | tuple[Response, int] | bool | Response:
+    global current_state
+
     not_logged = ensure_logged_in_api()
     if not_logged:
         return not_logged
@@ -500,6 +573,8 @@ def decrease_score(person_id: int) -> tuple[Response, int] | tuple[Response, int
 
 @app.route("/api/updates", methods=["GET"])
 def long_poll_updates() -> tuple[Response, int] | Response:
+    global current_state
+
     not_logged = ensure_logged_in_api()
     if not_logged:
         return not_logged
@@ -508,6 +583,8 @@ def long_poll_updates() -> tuple[Response, int] | Response:
         since = int(request.args.get("since", 0))
     except ValueError:
         since = 0
+
+    cut_vote_log()
 
     own_id = get_current_person()["id"]
     cooldowns = get_current_cooldowns()
