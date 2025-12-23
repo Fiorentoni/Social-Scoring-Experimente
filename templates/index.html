@@ -561,8 +561,14 @@
         return;
       }
       if (res.status === 428) {
+        const data = await res.json();
         alert(data.error);
         return;
+      }
+      if (res.status === 427) {
+         const data = await res.json();
+         alert(data.error);
+         return;
       }
       if (!res.ok) return;
       const data = await res.json();

@@ -347,7 +347,8 @@ def get_structured_vote_log(own_vote_log):
                 "timestamp": actions[1]["timestamp"],
                 "comment": actions[1]["comment"]
             }
-            flat_list.append(flat_entry)
+            if flat_entry["comment"] != "null":
+                flat_list.append(flat_entry)
 
     # 2. Sortieren nach Timestamp (neueste zuerst)
     # Da ISO-Strings (YYYY-MM-DD) sortierbar sind, reicht ein String-Vergleich
@@ -421,7 +422,6 @@ def increase_score(person_id: int) -> tuple[Response, int] | tuple[Response, int
     if person_id == get_current_person()['id']:
         return jsonify({"error": "Es kann nicht für die eigene Person abgestimmt werden."}), 428
 
-    # TODO was wenn vote schon 5.0?
     user = current_user()
     current_person = get_current_person()
     with state_lock:
@@ -438,8 +438,11 @@ def increase_score(person_id: int) -> tuple[Response, int] | tuple[Response, int
         if not person:
             return jsonify({"error": "Person nicht gefunden"}), 404
 
+        if person["score"] == 5:
+            return jsonify({"error": "Die Person hat schon den höchsten Score erreicht."}), 427
+
         vote_weight = get_vote_weight(current_person)
-        person["score"] = round(person["score"] + vote_weight, 2)
+        person["score"] = min(round(person["score"] + vote_weight, 2), 5)
         record_vote(user, person_id, "inc", comment)  # Vote vermerken
         bump_version()
         return jsonify({"version": update_version, "person": person})
@@ -453,8 +456,6 @@ def decrease_score(person_id: int) -> tuple[Response, int] | tuple[Response, int
     # Nicht für eigene Person voten
     if person_id == get_current_person()['id']:
         return jsonify({"error": "Es kann nicht für die eigene Person abgestimmt werden."}), 428
-
-    #TODO was wenn vote schon 0.0?
 
     user = current_user()
     current_person = get_current_person()
@@ -472,8 +473,12 @@ def decrease_score(person_id: int) -> tuple[Response, int] | tuple[Response, int
         if not person:
             return jsonify({"error": "Person nicht gefunden"}), 404
 
+        if person["score"] == 0:
+            return jsonify({"error": "Die Person hat schon den niedrigsten Score erreicht."}), 427
+
+        # nicht unter 0.0 scoren
         vote_weight = get_vote_weight(current_person)
-        person["score"] = round(person["score"] - vote_weight, 2)
+        person["score"] = max(round(person["score"] - vote_weight, 2),0)
         record_vote(user, person_id, "dec", comment)  # Vote vermerken
         bump_version()
         return jsonify({"version": update_version, "person": person})
