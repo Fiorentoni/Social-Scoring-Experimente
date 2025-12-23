@@ -501,7 +501,7 @@ def long_poll_updates() -> tuple[Response, int] | Response:
             version_condition.wait(timeout=25.0)
         changed = update_version > since
         return jsonify({"changed": changed, "version": update_version, "persons": current_state["persons"],
-                        "own_vote_log": get_structured_vote_log(current_state["vote_log"].get(str(own_id), {}))}), 429
+                        "own_vote_log": get_structured_vote_log(current_state["vote_log"].get(str(own_id), {}))}), 200
 
 
 ######### Globaler Zustand im Speicher

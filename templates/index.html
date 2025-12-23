@@ -1,234 +1,234 @@
 ﻿<!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
     <script src="https://code.jquery.com/jquery-3.7.1.min.js" crossorigin="anonymous"></script>
     <link href="/static/fontawesome-free-7.1.0-web/css/all.css" rel="stylesheet" />
-  <title>Social-Scoring-Experiment</title>
-  <style>
-    :root {
-      --bg: #daa2a6;
-      --card: #e4bbbf;
-      --border: #e5e7eb;
-      --text: white;
-      --muted: #6b7280;
-      --primary: #00bd21;
-      --danger: #ef4444;
-      --radius: 12px;
-    }
-    body {
-      margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji";
-      background: var(--bg); color: var(--text);
-    }
-    .container {
-      display: grid;
-      grid-template-columns: 320px 1fr;
-      gap: 24px;
-      padding: 24px;
-    }
-    .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 20px;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
-    }
-    .profile {
-      display: flex; flex-direction: column; align-items: center;
-    }
-    .avatar {
-      width: 120px; height: 120px; border-radius: 50%;
-      background: #e0e7ff; display: flex; align-items: center; justify-content: center;
-      font-weight: 700; font-size: 48px; color: #1f2937; user-select: none;
-      overflow: hidden;
-    }
-    .avatar img { width: 100%; height: 100%; object-fit: cover; display: none; }
-    .profile input {
-      width: 100%; font-size: 16px; padding: 10px 12px;
-      border: 1px solid var(--border); border-radius: 8px; background: #fafafa;
-    }
-    h2 { margin: 0 0 12px 0; font-size: 18px; }
-    .table-card h2 { margin-bottom: 16px; }
-    table { width: 100%; border-collapse: collapse; }
-    thead th {
-      text-align: left; font-weight: 600; font-size: 14px; color: var(--muted);
-      padding: 10px 12px; border-bottom: 1px solid var(--border);
-    }
-    tbody td {
-      padding: 10px; border-bottom: 1px solid var(--border); vertical-align: middle;
-    }
-    .row {
-      display: grid; grid-template-columns: 50px 72px 300px 120px 220px; align-items: center; font-size: 30px; position: relative;
-    }
-    .person-avatar {
-      width: 39px; height: 39px; border-radius: 50%; background: #dbeafe;
-      display: flex; align-items: center; justify-content: center; font-weight: 700; color: #1f2937;
-      overflow: hidden;
-    }
-    .person-avatar img { width: 100%; height: 100%; object-fit: cover; display: none; }
-    .score {
-      font-variant-numeric: tabular-nums; font-weight: 600;
-    }
-    .btn {
-      border: none; border-radius: 10px; padding: 8px 20px; font-size: 18px; font-weight: 700;
-      cursor: pointer; transition: transform 0.02s ease-in-out; margin-left: 10px; margin-right: 10px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    }
-    .btn:active { transform: scale(0.98); }
-    button:disabled {
-        cursor: not-allowed;       /* Zeigt ein "Stoppschild" beim Hover */
-        opacity: 0.05;              /* Macht ihn leicht transparent */
-    }
-    .btn:hover { background: rgba(237, 163, 251, 0.85); }
-    .btn:focus-visible {
-        outline: none;
-        box-shadow: 0 0 0 3px rgba(37,99,235,.35), 0 2px 8px rgba(0,0,0,.15);
-    }
-    .btn-plus { background: var(--primary); color: white; }
-    .btn-minus { background: var(--danger); color: white; }
-    .btn-send { appearance: none;
-        background: var(--bg);
-        color: #fff;
-        border: none;
-        border-radius: 10px;
-        padding: 10px 14px;
-        font-weight: 600;
-        line-height: 1.2;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        cursor: pointer;
-        user-select: none;
-        text-decoration: none;
-        box-shadow: 0 2px 8px rgba(0,0,0,.15);
-        transition: background-color .2s ease, box-shadow .2s ease, transform .03s ease; }
-    .btn-cancel { appearance: none;
-        background: transparent;
-        color: #334155;
-        border: 1px solid #64748b;
-        border-radius: 10px;
-        padding: 10px 14px;
-        font-weight: 600;
-        line-height: 1.2;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        cursor: pointer;
-        user-select: none;
-        text-decoration: none;
-        transition: background-color .2s ease, color .2s ease, transform .03s ease, box-shadow .2s ease; }
-    .btn-logout {background: var(--bg); color: white}
-    .actions { display: flex; align-items: center; }
-    .privileges {
-        /* Sichtbarkeit und Animation */
-        visibility: hidden;
-        opacity: 0;
-        transition: opacity 0.3s, visibility 0.3s; /* Kombinierte Transition */
+    <title>Social-Scoring-Experiment</title>
+    <style>
+        :root {
+            --bg: #daa2a6;
+            --card: #e4bbbf;
+            --border: #e5e7eb;
+            --text: white;
+            --muted: #6b7280;
+            --primary: #00bd21;
+            --danger: #ef4444;
+            --radius: 12px;
+        }
+        body {
+            margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji";
+            background: var(--bg); color: var(--text);
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 24px;
+            padding: 24px;
+        }
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+        }
+        .profile {
+            display: flex; flex-direction: column; align-items: center;
+        }
+        .avatar {
+            width: 120px; height: 120px; border-radius: 50%;
+            background: #e0e7ff; display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 48px; color: #1f2937; user-select: none;
+            overflow: hidden;
+        }
+        .avatar img { width: 100%; height: 100%; object-fit: cover; display: none; }
+        .profile input {
+            width: 100%; font-size: 16px; padding: 10px 12px;
+            border: 1px solid var(--border); border-radius: 8px; background: #fafafa;
+        }
+        h2 { margin: 0 0 12px 0; font-size: 18px; }
+        .table-card h2 { margin-bottom: 16px; }
+        table { width: 100%; border-collapse: collapse; }
+        thead th {
+            text-align: left; font-weight: 600; font-size: 14px; color: var(--muted);
+            padding: 10px 12px; border-bottom: 1px solid var(--border);
+        }
+        tbody td {
+            padding: 10px; border-bottom: 1px solid var(--border); vertical-align: middle;
+        }
+        .row {
+            display: grid; grid-template-columns: 50px 72px 300px 120px 220px; align-items: center; font-size: 30px; position: relative;
+        }
+        .person-avatar {
+            width: 39px; height: 39px; border-radius: 50%; background: #dbeafe;
+            display: flex; align-items: center; justify-content: center; font-weight: 700; color: #1f2937;
+            overflow: hidden;
+        }
+        .person-avatar img { width: 100%; height: 100%; object-fit: cover; display: none; }
+        .score {
+            font-variant-numeric: tabular-nums; font-weight: 600;
+        }
+        .btn {
+            border: none; border-radius: 10px; padding: 8px 20px; font-size: 18px; font-weight: 700;
+            cursor: pointer; transition: transform 0.02s ease-in-out; margin-left: 10px; margin-right: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .btn:active { transform: scale(0.98); }
+        button:disabled {
+            cursor: not-allowed;       /* Zeigt ein "Stoppschild" beim Hover */
+            opacity: 0.05;              /* Macht ihn leicht transparent */
+        }
+        .btn:hover { background: rgba(237, 163, 251, 0.85); }
+        .btn:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(37,99,235,.35), 0 2px 8px rgba(0,0,0,.15);
+        }
+        .btn-plus { background: var(--primary); color: white; }
+        .btn-minus { background: var(--danger); color: white; }
+        .btn-send { appearance: none;
+            background: var(--bg);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-weight: 600;
+            line-height: 1.2;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            user-select: none;
+            text-decoration: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,.15);
+            transition: background-color .2s ease, box-shadow .2s ease, transform .03s ease; }
+        .btn-cancel { appearance: none;
+            background: transparent;
+            color: #334155;
+            border: 1px solid #64748b;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-weight: 600;
+            line-height: 1.2;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            user-select: none;
+            text-decoration: none;
+            transition: background-color .2s ease, color .2s ease, transform .03s ease, box-shadow .2s ease; }
+        .btn-logout {background: var(--bg); color: white}
+        .actions { display: flex; align-items: center; }
+        .privileges {
+            /* Sichtbarkeit und Animation */
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s, visibility 0.3s; /* Kombinierte Transition */
 
-        position: absolute;
-        z-index: 1;
-        left: -10%;
-        top: -30px;
-        transform: translateX(-50%);
+            position: absolute;
+            z-index: 1;
+            left: -10%;
+            top: -30px;
+            transform: translateX(-50%);
 
-        max-width: 280px;           /* Verhindert, dass der Tooltip zu breit wird */
-        white-space: normal;        /* Erlaubt normalen Zeilenumbruch */
-        overflow-wrap: break-word;  /* Bricht auch extrem lange Wörter (z.B. URLs) um */
-        word-break: break-word;     /* Zusätzliche Absicherung für den Umbruch */
-        line-height: 1.4;
-        font-size: 1rem; /* Bessere Lesbarkeit als 10px */
-        background-color: var(--bg);
-        color: white;
-        border-bottom: transparent;
-        text-align: center;
-        border-radius: 6px;
-        padding-top: 0;
-        padding-bottom: 0;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); /* Subtiler Schatten für Tiefe */
-    }
-    /* Pseudo-Element für den kleinen Pfeil nach unten */
-    .privileges::after {
-        content: "";
-        position: absolute;
-        top: 50px;
-        left: 100%;
-        border-width: 12px;
-        border-style: solid;
-        border-color: transparent transparent transparent var(--bg); /* Erstellt ein Dreieck, das nach unten zeigt */
-    }
-    #votesContainer {
-        max-width: 100%;
-    }
-    /* Grundlegende Listeneinstellungen (von 'votelist' auf 'vote-list' korrigiert, falls im HTML so verwendet) */
-    .votelist {
-        list-style: none; /* Entfernt die Standard-Aufzählungszeichen */
-        padding: 0;
-        color: #444;
-    }
-    /* Allgemeine Stilistik für Listeneinträge */
-    .vote-item {
-        margin-bottom: 10px;
-        padding: 15px;
-        border-radius: 10px; /* Abgerundete Ecken wie im Profilbild */
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); /* Dezenter Schatten */
-        display: flex;
-        flex-direction: column; /* Sorgt dafür, dass Kommentar und Details untereinander stehen */
-        transition: background-color 0.3s ease;
-    }
-    /* Farbe für Upvotes (helles Grün im Rosa-Kontext) */
-    .vote-item.upvote {
-        background-color: #e8f5e9; /* Sehr helles Grün */
-        border-left: 5px solid #4CAF50; /* Grüner Rand links */
-    }
-    /* Farbe für Downvotes (helles Rot im Rosa-Kontext) */
-    .vote-item.downvote {
-        background-color: #ffebee; /* Sehr helles Rot */
-        border-left: 5px solid #f44336; /* Roter Rand links */
-    }
-    /* Stil für die erste Span (Operation, Name) */
-    .person-vote {
-        font-weight: bold;
-        color: #333;
-    }
-    /* Stil für die zweite Span (Timestamp) */
-    .timestamp {
-        font-size: 0.7em;
-        color: #333;
-    }
-    /* Stil für die zweite Span (Kommentar) */
-    .comment {
-        color: #666;
-        white-space: pre-wrap;
-        word-wrap: break-word;
-    }
-    .footer-note { color: var(--muted); font-size: 12px; margin-top: 8px; }
-    @media (max-width: 900px) {
-      .container { grid-template-columns: 1fr; }
-      .row { grid-template-columns: 56px 1fr 100px 180px; }
-    }
-    /* Overlay (Maske) ist initial unsichtbar */
-    #inputModal {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, .15);
-        z-index: 1000;
-    }
-    .modal__dialog {
-        background: var(--card);
-        border-radius: 12px;
-        padding: 16px;
-        width: min(600px, 90vw);
-        margin: 10vh auto;
-        box-shadow: 0 20px 50px rgba(0,0,0,.2);
-    }
-    textarea { width: 100%; box-sizing: border-box; padding: 10px; resize: vertical; }
-    .comment-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
-    button { cursor: pointer; }
-  </style>
+            max-width: 280px;           /* Verhindert, dass der Tooltip zu breit wird */
+            white-space: normal;        /* Erlaubt normalen Zeilenumbruch */
+            overflow-wrap: break-word;  /* Bricht auch extrem lange Wörter (z.B. URLs) um */
+            word-break: break-word;     /* Zusätzliche Absicherung für den Umbruch */
+            line-height: 1.4;
+            font-size: 1rem; /* Bessere Lesbarkeit als 10px */
+            background-color: var(--bg);
+            color: white;
+            border-bottom: transparent;
+            text-align: center;
+            border-radius: 6px;
+            padding-top: 0;
+            padding-bottom: 0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); /* Subtiler Schatten für Tiefe */
+        }
+        /* Pseudo-Element für den kleinen Pfeil nach unten */
+        .privileges::after {
+            content: "";
+            position: absolute;
+            top: 50px;
+            left: 100%;
+            border-width: 12px;
+            border-style: solid;
+            border-color: transparent transparent transparent var(--bg); /* Erstellt ein Dreieck, das nach unten zeigt */
+        }
+        #votesContainer {
+            max-width: 100%;
+        }
+        /* Grundlegende Listeneinstellungen (von 'votelist' auf 'vote-list' korrigiert, falls im HTML so verwendet) */
+        .votelist {
+            list-style: none; /* Entfernt die Standard-Aufzählungszeichen */
+            padding: 0;
+            color: #444;
+        }
+        /* Allgemeine Stilistik für Listeneinträge */
+        .vote-item {
+            margin-bottom: 10px;
+            padding: 15px;
+            border-radius: 10px; /* Abgerundete Ecken wie im Profilbild */
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); /* Dezenter Schatten */
+            display: flex;
+            flex-direction: column; /* Sorgt dafür, dass Kommentar und Details untereinander stehen */
+            transition: background-color 0.3s ease;
+        }
+        /* Farbe für Upvotes (helles Grün im Rosa-Kontext) */
+        .vote-item.upvote {
+            background-color: #e8f5e9; /* Sehr helles Grün */
+            border-left: 5px solid #4CAF50; /* Grüner Rand links */
+        }
+        /* Farbe für Downvotes (helles Rot im Rosa-Kontext) */
+        .vote-item.downvote {
+            background-color: #ffebee; /* Sehr helles Rot */
+            border-left: 5px solid #f44336; /* Roter Rand links */
+        }
+        /* Stil für die erste Span (Operation, Name) */
+        .person-vote {
+            font-weight: bold;
+            color: #333;
+        }
+        /* Stil für die zweite Span (Timestamp) */
+        .timestamp {
+            font-size: 0.7em;
+            color: #333;
+        }
+        /* Stil für die zweite Span (Kommentar) */
+        .comment {
+            color: #666;
+            white-space: pre-wrap;
+            overflow-wrap: break-word;
+        }
+        .footer-note { color: var(--muted); font-size: 12px; margin-top: 8px; }
+        @media (max-width: 900px) {
+            .container { grid-template-columns: 1fr; }
+            .row { grid-template-columns: 56px 1fr 100px 180px; }
+        }
+        /* Overlay (Maske) ist initial unsichtbar */
+        #inputModal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .15);
+            z-index: 1000;
+        }
+        .modal__dialog {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 16px;
+            width: min(600px, 90vw);
+            margin: 10vh auto;
+            box-shadow: 0 20px 50px rgba(0,0,0,.2);
+        }
+        textarea { width: 100%; box-sizing: border-box; padding: 10px; resize: vertical; }
+        .comment-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+        button { cursor: pointer; }
+    </style>
 </head>
 <body>
 <div id="inputModal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modalTitle">
@@ -246,42 +246,42 @@
 
 <div class="container">
     <div class="card profile-card">
-      <h2>Dein Profil</h2>
-      <div class="profile">
-        <div class="avatar" id="userAvatar" title="Nutzer-Foto">
-          <img id="userAvatarImg" alt="Avatar">
-          <span id="userInitials">DU</span>
+        <h2>Dein Profil</h2>
+        <div class="profile">
+            <div class="avatar" id="userAvatar" title="Nutzer-Foto">
+                <img id="userAvatarImg" alt="Avatar">
+                <span id="userInitials">DU</span>
+            </div>
+            <span style="font-size: 30px; font-weight: bold;" id="userName">{{ display_name }}</span>
+            <span style="font-size: 40px; font-weight: bold" id="userScore">{% if user_score == 0 %}{% else %}{{ user_score }}{% endif %}</span>
+            <div id="votesContainer"></div>
+            {% if display_name != "Admin" %}
+                <button class="btn btn-send" id="moreVotesButton" onclick="showNextVotes()">Noch X weitere Kommentare (max. 15)</button>
+            {% endif %}
+            <p></p>
+            <button class="btn btn-cancel" id="logoutButton" onclick="location.href='/logout';">Logout</button>
         </div>
-        <span style="font-size: 30px; font-weight: bold;" id="userName">{{ display_name }}</span>
-        <span style="font-size: 40px; font-weight: bold" id="userScore">{% if user_score == 0 %}{% else %}{{ user_score }}{% endif %}</span>
-        <div id="votesContainer"></div>
-        {% if display_name != "Admin" %}
-          <button class="btn btn-send" id="moreVotesButton" onclick="showNextVotes()">Noch X weitere Kommentare (max. 15)</button>
-        {% endif %}
-          <p></p>
-        <button class="btn btn-cancel" id="logoutButton" onclick="location.href='/logout';">Logout</button>
-      </div>
     </div>
 
     <div class="card table-card">
-      <h2>Highscore-Liste</h2>
-      <table aria-label="Highscore-Liste">
-        <thead>
-          <tr class="row">
-            <th>Info</th>
-            <th>Avatar</th>
-            <th>Name</th>
-            <th>Score</th>
-            <th style>erhöhen / verringern</th>
-          </tr>
-        </thead>
-        <tbody id="personsBody"></tbody>
-      </table>
-      <p class="footer-note">Hinweis: Die Liste wird live aktualisiert.</p>
+        <h2>Highscore-Liste</h2>
+        <table aria-label="Highscore-Liste">
+            <thead>
+            <tr class="row">
+                <th>Info</th>
+                <th>Avatar</th>
+                <th>Name</th>
+                <th>Score</th>
+                <th style>erhöhen / verringern</th>
+            </tr>
+            </thead>
+            <tbody id="personsBody"></tbody>
+        </table>
+        <p class="footer-note">Hinweis: Die Liste wird live aktualisiert.</p>
     </div>
-  </div>
+</div>
 
-  <script>
+<script>
     const personsBody = document.getElementById('personsBody');
     let currentVersion = 0;
     let voteLevel = 1;
@@ -290,75 +290,108 @@
 
     // Ein einfaches, datenschutzfreundliches Platzhalter-Bild als Data-URL (SVG)
     const placeholderDataUrl = 'data:image/svg+xml;utf8,' +
-      encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64">' +
-        '<rect width="100%" height="100%" rx="32" fill="#dbeafe"/>' +
-        '<text x="50%" y="52%" text-anchor="middle" font-size="22" font-family="system-ui" fill="#1f2937">👤</text>' +
-      '</svg>');
+        encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64">' +
+            '<rect width="100%" height="100%" rx="32" fill="#dbeafe"/>' +
+            '<text x="50%" y="52%" text-anchor="middle" font-size="22" font-family="system-ui" fill="#1f2937">👤</text>' +
+            '</svg>');
 
     function initials(name) {
-      if (!name) return '??';
-      const parts = name.trim().split(/\s+/);
-      const a = parts[0]?.[0] || '';
-      const b = parts[1]?.[0] || '';
-      return (a + b).toUpperCase();
+        if (!name) return '??';
+        const parts = name.trim().split(/\s+/);
+        const a = parts[0]?.[0] || '';
+        const b = parts[1]?.[0] || '';
+        return (a + b).toUpperCase();
     }
 
     function renderPersons(persons) {
-      personsBody.innerHTML = '';
+        personsBody.innerHTML = '';
 
-      persons.sort(function(a, b) {return b['score']-a['score']});
+        persons.sort(function(a, b) {return b['score']-a['score']});
 
-      for (const person of persons) {
-        const tr = document.createElement('tr');
-        tr.className = 'row';
+        for (const person of persons) {
+            const tr = document.createElement('tr');
+            tr.className = 'row';
 
-        // unsichtbare Privilegien-Zelle
-        const tdPrivileges = document.createElement('td');
-        tdPrivileges.className = 'privileges';
-        tdPrivileges.innerHTML = structurePrivileges(person['privileges']);
+            // unsichtbare Privilegien-Zelle
+            const tdPrivileges = document.createElement('td');
+            tdPrivileges.className = 'privileges';
+            tdPrivileges.innerHTML = structurePrivileges(person['privileges']);
 
-        // Info-Zelle
-        const tdInfo = document.createElement('td');
-        tdInfo.className = 'infoTooltip';
-        tdInfo.alt = "Info-Symbol";
-        const iconInfo = document.createElement('i');
-        iconInfo.className = 'fa-solid fa-circle-info';
-        tdInfo.appendChild(iconInfo);
+            // Info-Zelle
+            const tdInfo = document.createElement('td');
+            tdInfo.className = 'infoTooltip';
+            tdInfo.alt = "Info-Symbol";
+            const iconInfo = document.createElement('i');
+            iconInfo.className = 'fa-solid fa-circle-info';
+            tdInfo.appendChild(iconInfo);
 
-        // Foto-Zelle
-        const tdPhoto = document.createElement('td');
-        const avatar = document.createElement('div');
-        avatar.className = 'person-avatar';
-        const img = document.createElement('img');
-        img.alt = 'Foto';
-        img.src = person.photo || placeholderDataUrl;
-        img.style.display = 'block';
-        avatar.appendChild(img);
-        tdPhoto.appendChild(avatar);
+            // Foto-Zelle
+            const tdPhoto = document.createElement('td');
+            const avatar = document.createElement('div');
+            avatar.className = 'person-avatar';
+            const img = document.createElement('img');
+            img.alt = 'Foto';
+            img.src = person.photo || placeholderDataUrl;
+            img.style.display = 'block';
+            avatar.appendChild(img);
+            tdPhoto.appendChild(avatar);
 
-        // Name-Zelle
-        const tdName = document.createElement('td');
-        tdName.textContent = person.name;
+            // Name-Zelle
+            const tdName = document.createElement('td');
+            tdName.textContent = person.name;
 
-        // Score-Zelle
-        const tdScore = document.createElement('td');
-        const scoreSpan = document.createElement('span');
-        scoreSpan.className = 'score';
-        scoreSpan.textContent = Number(person.score).toFixed(2);
-        tdScore.appendChild(scoreSpan);
+            // Score-Zelle
+            const tdScore = document.createElement('td');
+            const scoreSpan = document.createElement('span');
+            scoreSpan.className = 'score';
+            scoreSpan.textContent = Number(person.score).toFixed(2);
+            tdScore.appendChild(scoreSpan);
 
-        // Aktionen-Zelle
-        const tdActions = document.createElement('td');
-        tdActions.className = 'actions';
+            // Gesperrte Buttons finden und ausgrauen
+            let errorTooltip = '';
+            let buttonPlusDisabled = false;
+            let buttonMinusDisabled = false;
 
-        if (person.name !== '{{ display_name }}') {
+            if (person.name === '{{ display_name }}') {
+                // Update ownScore
+                const ownScore = document.getElementById('userScore');
+                ownScore.textContent = person.score;
+
+                buttonPlusDisabled = true;
+                buttonMinusDisabled = true;
+                errorTooltip = "Man kann nicht für sich selbst voten!"
+            }
+
+
+
+            // Aktionen-Zelle
+            const tdActions = document.createElement('td');
+            tdActions.className = 'actions';
+
             const btnPlus = document.createElement('button');
-            btnPlus.className = 'btn btn-plus';
+            if (buttonPlusDisabled) {
+                btnPlus.className = 'btn btn-plus btn-greyed';
+                btnPlus.title = errorTooltip;
+            }
+            else {
+                btnPlus.className = 'btn btn-plus';
+            }
             btnPlus.textContent = '+';
-            btnPlus.addEventListener('click', () => vote(person.id, 'inc', null));
+            if (buttonPlusDisabled) {
+                btnPlus.disabled = true;
+            }
+            else {
+                btnPlus.addEventListener('click', () => vote(person.id, 'inc', null));
+            }
 
             const btnPlusMessage = document.createElement('button');
-            btnPlusMessage.className = 'btn btn-plus';
+            if (buttonPlusDisabled) {
+                btnPlusMessage.className = 'btn btn-plus btn-greyed';
+                btnPlusMessage.title = errorTooltip;
+            }
+            else {
+                btnPlusMessage.className = 'btn btn-plus';
+            }
             btnPlusMessage.style.display = 'inline-flex';
             btnPlusMessage.style.alignItems = 'center';
             btnPlusMessage.style.gap = '8px';
@@ -367,10 +400,21 @@
             icon.className = 'fa-regular fa-message';
             btnPlusMessage.appendChild(textNode);
             btnPlusMessage.appendChild(icon);
-            btnPlusMessage.addEventListener('click', () => openModal(person.id, person.name, 'inc'));
+            if (buttonPlusDisabled) {
+                btnPlusMessage.disabled = true;
+            }
+            else {
+                btnPlusMessage.addEventListener('click', () => openModal(person.id, person.name, 'inc'));
+            }
 
             const btnMinusMessage = document.createElement('button');
-            btnMinusMessage.className = 'btn btn-minus';
+            if (buttonMinusDisabled) {
+                btnMinusMessage.className = 'btn btn-minus btn-greyed';
+                btnMinusMessage.title = errorTooltip;
+            }
+            else {
+                btnMinusMessage.className = 'btn btn-minus';
+            }
             btnMinusMessage.style.display = 'inline-flex';
             btnMinusMessage.style.alignItems = 'center';
             btnMinusMessage.style.gap = '8px';
@@ -379,73 +423,42 @@
             icon2.className = 'fa-regular fa-message';
             btnMinusMessage.appendChild(textNode2);
             btnMinusMessage.appendChild(icon2);
-            btnMinusMessage.addEventListener('click', () => openModal(person.id, person.name, 'dec'));
+            if (buttonMinusDisabled) {
+                btnMinusMessage.disabled = true;
+            }
+            else {
+                btnMinusMessage.addEventListener('click', () => openModal(person.id, person.name, 'dec'));
+            }
 
             const btnMinus = document.createElement('button');
-            btnMinus.className = 'btn btn-minus';
+            if (buttonMinusDisabled) {
+                btnMinus.className = 'btn btn-minus btn-greyed';
+                btnMinus.title = errorTooltip;
+            }
+            else {
+                btnMinus.className = 'btn btn-minus';
+            }
             btnMinus.textContent = '−';
-            btnMinus.addEventListener('click', () => vote(person.id, 'dec', null));
+            if (buttonMinusDisabled) {
+                btnMinus.disabled = true;
+            }
+            else {
+                btnMinus.addEventListener('click', () => vote(person.id, 'dec', null));
+            }
 
             tdActions.appendChild(btnPlus);
             tdActions.appendChild(btnPlusMessage);
             tdActions.appendChild(btnMinusMessage);
             tdActions.appendChild(btnMinus);
+
+            tr.appendChild(tdInfo);
+            tr.appendChild(tdPrivileges);
+            tr.appendChild(tdPhoto);
+            tr.appendChild(tdName);
+            tr.appendChild(tdScore);
+            tr.appendChild(tdActions);
+            personsBody.appendChild(tr);
         }
-        // ... sonst nur disabled Buttons anzeigen
-            // TODO auch inaktive Buttons nach Operation disablen!
-        else {
-            // Update ownScore
-            const ownScore = document.getElementById('userScore');
-            ownScore.textContent = person.score;
-
-            const btnPlus = document.createElement('button');
-            btnPlus.className = 'btn btn-plus btn-greyed';
-            btnPlus.textContent = '+';
-            btnPlus.disabled = true;
-
-            const btnPlusMessage = document.createElement('button');
-            btnPlusMessage.className = 'btn btn-plus btn-greyed';
-            btnPlusMessage.style.display = 'inline-flex';
-            btnPlusMessage.style.alignItems = 'center';
-            btnPlusMessage.style.gap = '8px';
-            const textNode = document.createTextNode('+');
-            const icon = document.createElement('i');
-            icon.className = 'fa-regular fa-message';
-            btnPlusMessage.appendChild(textNode);
-            btnPlusMessage.appendChild(icon);
-            btnPlusMessage.disabled = true;
-
-            const btnMinusMessage = document.createElement('button');
-            btnMinusMessage.className = 'btn btn-minus btn-greyed';
-            btnMinusMessage.style.display = 'inline-flex';
-            btnMinusMessage.style.alignItems = 'center';
-            btnMinusMessage.style.gap = '8px';
-            const textNode2 = document.createTextNode('-');
-            const icon2 = document.createElement('i');
-            icon2.className = 'fa-regular fa-message';
-            btnMinusMessage.appendChild(textNode2);
-            btnMinusMessage.appendChild(icon2);
-            btnMinusMessage.disabled = true;
-
-            const btnMinus = document.createElement('button');
-            btnMinus.className = 'btn btn-minus btn-greyed';
-            btnMinus.textContent = '−';
-            btnMinus.disabled = true;
-
-            tdActions.appendChild(btnPlus);
-            tdActions.appendChild(btnPlusMessage);
-            tdActions.appendChild(btnMinusMessage);
-            tdActions.appendChild(btnMinus);
-        }
-
-        tr.appendChild(tdInfo);
-        tr.appendChild(tdPrivileges);
-        tr.appendChild(tdPhoto);
-        tr.appendChild(tdName);
-        tr.appendChild(tdScore);
-        tr.appendChild(tdActions);
-        personsBody.appendChild(tr);
-      }
     }
 
     function structurePrivileges(privileges) {
@@ -509,7 +522,10 @@
         if (remainingVotes < 0) remainingVotes = 0;
         const button = document.getElementById('moreVotesButton');
         if (button !== null) {
-            if (remainingVotes > 0) {
+            if (remainingVotes === 1) {
+                button.textContent = `Noch ein weiterer Kommentar (max. 15)`;
+            }
+            else if (remainingVotes > 0) {
                 button.textContent = `Noch ${remainingVotes} weitere Kommentare (max. 15)`;
             }
             else {
@@ -538,74 +554,74 @@
     }
 
     async function initialLoad() {
-      const res = await fetch('/api/persons');
-      const data = await res.json();
-      currentVersion = data.version || 0;
-      renderPersons(data.persons || []);
-      voteLog = data.own_vote_log;
-      renderVoteLog(voteLog, voteLevel || [], voteLevel);
+        const res = await fetch('/api/persons');
+        const data = await res.json();
+        currentVersion = data.version || 0;
+        renderPersons(data.persons || []);
+        voteLog = data.own_vote_log;
+        renderVoteLog(voteLog, voteLevel || [], voteLevel);
     }
 
-  async function vote(id, operation, comment) {
-    try {
-        let body = new URLSearchParams();
-        body.append("comment", comment);
-        const res = await fetch(`/api/persons/${id}/${operation}`, { method: 'POST',
-          body: body });
-      if (res.status === 401) { window.location.href = '/login'; return; }
-      if (res.status === 429) {
-        const data = await res.json();
-        const secs = data.retry_after_seconds ?? 0;
-        const mins = Math.ceil(secs / 60);
-        alert((data.error || 'Cooldown aktiv.') + ` Versuche es in ca. ${mins} Minute(n) erneut.`);
-        return;
-      }
-      if (res.status === 428) {
-        const data = await res.json();
-        alert(data.error);
-        return;
-      }
-      if (res.status === 427) {
-         const data = await res.json();
-         alert(data.error);
-         return;
-      }
-      if (!res.ok) return;
-      const data = await res.json();
-      currentVersion = data.version || currentVersion;
-    } catch (e) {
-      console.error('Vote-Fehler', e);
+    async function vote(id, operation, comment) {
+        try {
+            let body = new URLSearchParams();
+            body.append("comment", comment);
+            const res = await fetch(`/api/persons/${id}/${operation}`, { method: 'POST',
+                body: body });
+            if (res.status === 401) { window.location.href = '/login'; return; }
+            if (res.status === 429) {
+                const data = await res.json();
+                const secs = data.retry_after_seconds ?? 0;
+                const mins = Math.ceil(secs / 60);
+                alert((data.error || 'Cooldown aktiv.') + ` Versuche es in ca. ${mins} Minute(n) erneut.`);
+                return;
+            }
+            if (res.status === 428) {
+                const data = await res.json();
+                alert(data.error);
+                return;
+            }
+            if (res.status === 427) {
+                const data = await res.json();
+                alert(data.error);
+                return;
+            }
+            if (!res.ok) return;
+            const data = await res.json();
+            currentVersion = data.version || currentVersion;
+        } catch (e) {
+            console.error('Vote-Fehler', e);
+        }
     }
-  }
 
     async function pollLoop() {
-      try {
-        const res = await fetch(`/api/updates?since=${encodeURIComponent(currentVersion)}`, {
-          // Keine speziellen Optionen nötig; Server hält bis zu ~25s die Verbindung
-        });
-        const data = await res.json();
-        if (data.changed) {
-          currentVersion = data.version || currentVersion;
-          renderPersons(data.persons || []);
-          voteLog = data.own_vote_log;
-          renderVoteLog(voteLog, voteLevel || [], voteLevel);
-        } else {
-          // Keine Änderung, aber Version bleibt gleich; einfach weiterpolling
-          currentVersion = data.version || currentVersion;
+        try {
+            const res = await fetch(`/api/updates?since=${encodeURIComponent(currentVersion)}`, {
+                // Keine speziellen Optionen nötig; Server hält bis zu ~25s die Verbindung
+            });
+            const data = await res.json();
+            if (data.changed) {
+                currentVersion = data.version || currentVersion;
+                renderPersons(data.persons || []);
+                voteLog = data.own_vote_log;
+                renderVoteLog(voteLog, voteLevel || [], voteLevel);
+            } else {
+                // Keine Änderung, aber Version bleibt gleich; einfach weiterpolling
+                currentVersion = data.version || currentVersion;
+            }
+        } catch (e) {
+            console.warn('Long-Polling unterbrochen, versuche erneut...', e);
+            await new Promise(r => setTimeout(r, 1000));
+        } finally {
+            // Sofort wieder starten, um "live" zu bleiben
+            pollLoop();
         }
-      } catch (e) {
-        console.warn('Long-Polling unterbrochen, versuche erneut...', e);
-        await new Promise(r => setTimeout(r, 1000));
-      } finally {
-        // Sofort wieder starten, um "live" zu bleiben
-        pollLoop();
-      }
     }
 
     // Start
     (async function () {
-      await initialLoad();
-      pollLoop();
+        await initialLoad();
+        pollLoop();
     })();
 
     // Alles was mit dem Comment-Fenster zu tun hat ist hier
@@ -675,6 +691,6 @@
         $(this).closest('tr').find('.privileges').css({'visibility': 'hidden', 'opacity': '0'});
     });
 
-  </script>
+</script>
 </body>
 </html>
