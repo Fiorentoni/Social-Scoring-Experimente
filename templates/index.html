@@ -35,7 +35,7 @@
       box-shadow: 0 1px 2px rgba(0,0,0,0.04);
     }
     .profile {
-      display: flex; flex-direction: column; align-items: center; gap: 12px;
+      display: flex; flex-direction: column; align-items: center;
     }
     .avatar {
       width: 120px; height: 120px; border-radius: 50%;
@@ -254,12 +254,10 @@
         </div>
         <span style="font-size: 30px" id="userName">{{ display_name }}</span>
         <span style="font-size: 30px" id="userScore">{{ user_score }}</span>
-        <div id="votesContainer">
-
-        </div>
-        <p>
-           <button class="btn btn-logout" id="logoutButton" onclick="location.href='/logout';">Logout</button>
-        </p>
+        <div id="votesContainer"></div>
+        <button class="btn btn-send" id="moreVotesButton" onclick="showNextVotes()">Noch X weitere (max. 15)</button>
+          <p></p>
+        <button class="btn btn-cancel" id="logoutButton" onclick="location.href='/logout';">Logout</button>
       </div>
     </div>
 
@@ -284,6 +282,9 @@
   <script>
     const personsBody = document.getElementById('personsBody');
     let currentVersion = 0;
+    let voteLevel = 1;
+    let voteLog;
+    let remainingVotes;
 
     // Ein einfaches, datenschutzfreundliches Platzhalter-Bild als Data-URL (SVG)
     const placeholderDataUrl = 'data:image/svg+xml;utf8,' +
@@ -452,16 +453,21 @@
         return html;
     }
 
-    function renderVoteLog(voteLog) {
+    function renderVoteLog(voteLog, level) {
+        const length = voteLog.length;
+        let startIndex;
+        let lastIndex;
+        if (level === 1) startIndex = 0;
+        else if (level === 2 && length > 5 && length <= 10) startIndex = 5;
+        else if (level === 3 && length > 10 && length <= 15) startIndex = 10;
+        else return false;
+
         let totalHtml = '<ul class="votelist">'
-        for (let i = 0; i < 5; i++) {
+        for (let i = startIndex; i < startIndex+5; i++) {
             if (voteLog[i] == null) {
                 break;
             }
 
-            // TODO votes sollen doch anonym sein!
-
-            let personName = voteLog[i]['person'];
             let operation = voteLog[i]['operation'];
             const timestamp = voteLog[i]['timestamp'];
             const comment = voteLog[i]['comment'];
@@ -476,16 +482,47 @@
                 className = "vote-item downvote";
             }
 
-            if (personName === "admin") personName = 'Der Staat';
+            let saysName = false;
+            if (voteLog[i]['person'] === "admin") saysName = true;
 
-            let html = `<li class="${className}"><span class="person-vote">${operation} von ${personName}</span><span class="timestamp">${timestamp}</span>`;
+            let html;
+            if (saysName) {
+                html = `<li class="${className}" style="border-left: 5px solid rgba(220,30,255,0.64);"><span class="person-vote">Staatliches ${operation}</span>
+                            <span class="timestamp">${timestamp}</span>`;
+            }
+            else {
+                html = `<li class="${className}"><span class="person-vote">${operation}
+                        </span><span class="timestamp">${timestamp}</span>`;
+            }
             html += `<span class="comment">${comment}</span></li>`;
 
+            lastIndex = i;
             totalHtml += html;
         }
+        remainingVotes = length - lastIndex-1;
+        if (remainingVotes < 0) remainingVotes = 0;
+        const button = document.getElementById('moreVotesButton');
+        button.textContent = `Noch ${remainingVotes} weitere (max. 15)`;
+
         totalHtml += '</ul>';
         const votesContainer = document.getElementById('votesContainer');
+        votesContainer.innerHTML = "";
         votesContainer.innerHTML = totalHtml;
+
+        return true;
+    }
+
+    function showNextVotes() {
+        if (voteLevel < 3) {
+            voteLevel++;
+        }
+        else {
+            voteLevel = 1;
+        }
+        if (!renderVoteLog(voteLog, voteLevel)) {
+            voteLevel = 1;
+            renderVoteLog(voteLog, voteLevel);
+        }
     }
 
     async function initialLoad() {
@@ -493,7 +530,8 @@
       const data = await res.json();
       currentVersion = data.version || 0;
       renderPersons(data.persons || []);
-        renderVoteLog(data.own_vote_log || []);
+      voteLog = data.own_vote_log;
+      renderVoteLog(voteLog, voteLevel || [], voteLevel);
     }
 
   async function vote(id, operation, comment) {
@@ -531,7 +569,8 @@
         if (data.changed) {
           currentVersion = data.version || currentVersion;
           renderPersons(data.persons || []);
-          renderVoteLog(data.own_vote_log || []);
+          voteLog = data.own_vote_log;
+          renderVoteLog(voteLog, voteLevel || [], voteLevel);
         } else {
           // Keine Änderung, aber Version bleibt gleich; einfach weiterpolling
           currentVersion = data.version || currentVersion;
