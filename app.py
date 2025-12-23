@@ -36,7 +36,10 @@ HEADERS = {
 }
 
 STARTING_SCORE = 4.0
-BASE_SCORE_CHANGE = 0.05
+VOTE_WEIGHT_MODIFIER = 1 #TODO halbieren?
+VOTE_WEIGHT_ADMIN = 0.2
+DEFAULT_VOTE_WEIGHT = 0.1
+WEIGHTS_ENABLED_MIN_VERSION = 20
 RANKING_PERCENTAGES = {
     9.10: 1,
     18.19: 2,
@@ -50,7 +53,7 @@ RANKING_PERCENTAGES = {
     90.92: 10,
     100.0: 11
 }
-VOTE_WEIGHTS = { #TODO halbieren?
+VOTE_WEIGHTS = {
     1: 0.5,
     2: 0.4,
     3: 0.3,
@@ -63,8 +66,7 @@ VOTE_WEIGHTS = { #TODO halbieren?
     10: 0.05,
     11: 0.04
 }
-VOTE_WEIGHT_ADMIN = 0.2
-SCORE_COOLDOWN_HOURS = timedelta(hours=12)
+VOTE_COOLDOWN_HOURS = timedelta(hours=12)
 
 
 USERS = {
@@ -202,23 +204,25 @@ def get_ranking_category(person):
                 case _:
                     return "Ungültiger Wert!"
 
-            # TODO was wenn keiner gefunden?
     return None
 
 
 def get_vote_weight(person):
     if person["name"] == "admin":
-        return VOTE_WEIGHT_ADMIN
+        return VOTE_WEIGHT_ADMIN * VOTE_WEIGHT_MODIFIER
+
+    global update_version
+    number_of_persons = len(current_state["persons"])
+    if update_version <= number_of_persons * 2:
+        return DEFAULT_VOTE_WEIGHT
 
     ranking_category = get_ranking_category(person)
-    vote_weight = VOTE_WEIGHTS[ranking_category]
+    vote_weight = VOTE_WEIGHTS[ranking_category] * VOTE_WEIGHT_MODIFIER
     return vote_weight
 
 def get_privileges(person):
     ranking_category = get_ranking_category(person)
     privileges = []
-
-    # todo hinzufügen, dass ranking/votes erst ab version update 20 oder so passieren
 
     if ranking_category == 1:
         privileges.append(["Darf einzelne Privilegien nach Absprache mit Lehrkraft an Andere weitergeben", "green"])
@@ -389,10 +393,10 @@ def can_vote_now(user: str, person_id: int, desired_operation: str) -> tuple[boo
         # Defekter Eintrag? Vorsichtshalber sperre nicht.
         return True, None
     delta = get_utc_now() - last_timestamp
-    if delta >= SCORE_COOLDOWN_HOURS:
+    if delta >= VOTE_COOLDOWN_HOURS:
         return True, None
     else:
-        return False, (SCORE_COOLDOWN_HOURS - delta)
+        return False, (VOTE_COOLDOWN_HOURS - delta)
 def record_vote(user: str, person_id: int, operation: str, comment: str) -> None:
     """
     Vote im Log vermerken (Zeitpunkt + Operation).
