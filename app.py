@@ -157,8 +157,12 @@ def load_current_state() -> Any:
 
     return data
 
-def save_state(data: object) -> None:
-    update_gist_data(data)
+def save_state(data: object) -> bool:
+    with gist_lock:
+        success = update_gist_data(data)
+        if not success:
+            print("FEHLER beim Speichern der Gist-Daten.")
+        return success
 
 def get_utc_now():
     return datetime.now(timezone.utc)
@@ -173,65 +177,50 @@ def convert_from_iso_zulu(string: str) -> datetime:
         string = string[:-1] + "+00:00"
     return datetime.fromisoformat(string)
 
-def get_ranking_category(person):
-    sorted_scorelist = get_sorted_scorelist()
-
-    for user in sorted_scorelist:
+def get_ranking_category(person, sorted_scorelist):
+    for index, user in enumerate(sorted_scorelist):
         if user['name'] == person['name']:
-            ranking = sorted_scorelist.index(user) + 1 # weil liste bei 0 anfängt!
+            ranking = index + 1 # weil liste bei 0 anfängt!
             # Wenn gleiche Punktzahl, dann Ranking aufstufen
             if ranking != 1:
                 while ranking != 1 and sorted_scorelist[ranking-1]['score'] == sorted_scorelist[ranking-2]['score']:
                     ranking = ranking - 1
 
             ranking_percentage = ranking / len(sorted_scorelist) * 100
-            ranking_percentages_list = list(RANKING_PERCENTAGES)
-            match ranking_percentage:
-                case r if r <= ranking_percentages_list[0]:
-                    return 1
-                case r if r <= ranking_percentages_list[1]:
-                    return 2
-                case r if r <= ranking_percentages_list[2]:
-                    return 3
-                case r if r <= ranking_percentages_list[3]:
-                    return 4
-                case r if r <= ranking_percentages_list[4]:
-                    return 5
-                case r if r <= ranking_percentages_list[5]:
-                    return 6
-                case r if r <= ranking_percentages_list[6]:
-                    return 7
-                case r if r <= ranking_percentages_list[7]:
-                    return 8
-                case r if r <= ranking_percentages_list[8]:
-                    return 9
-                case r if r <= ranking_percentages_list[9]:
-                    return 10
-                case r if r <= ranking_percentages_list[10]:
-                    return 11
-                case _:
-                    return "Ungültiger Wert!"
+            
+            # Effizientere Suche nach der Kategorie
+            for threshold, category in RANKING_PERCENTAGES.items():
+                if ranking_percentage <= threshold:
+                    return category
+            return 11 # Default / Letzte Kategorie
 
     return None
 
 
-def get_vote_weight(person):
+def get_vote_weight(person, ranking_category=None):
     global current_state
+    global update_version
 
     if person["name"] == "admin":
         return VOTE_WEIGHT_ADMIN * VOTE_WEIGHT_MODIFIER
 
-    global update_version
     number_of_persons = len(current_state["persons"])
     if update_version <= number_of_persons * 2:
         return DEFAULT_VOTE_WEIGHT
 
-    ranking_category = get_ranking_category(person)
-    vote_weight = VOTE_WEIGHTS[ranking_category] * VOTE_WEIGHT_MODIFIER
-    return vote_weight
+    if ranking_category is None:
+        sorted_list = get_sorted_scorelist()
+        ranking_category = get_ranking_category(person, sorted_list)
+        
+    vote_weight = VOTE_WEIGHTS.get(ranking_category, 0.04) * VOTE_WEIGHT_MODIFIER
+    return round(vote_weight, 2)
 
-def get_privileges(person):
-    ranking_category = get_ranking_category(person)
+
+def get_privileges(person, ranking_category=None):
+    if ranking_category is None:
+        sorted_list = get_sorted_scorelist()
+        ranking_category = get_ranking_category(person, sorted_list)
+    
     privileges = []
 
     if ranking_category == 1:
@@ -265,8 +254,12 @@ def get_sorted_scorelist():
     return sorted(current_state["persons"], key = lambda person: person["score"], reverse = True)
 
 def add_privileges_to_state(state):
+    sorted_list = sorted(state["persons"], key=lambda p: p["score"], reverse=True)
+    
+    # Vorher Kategorien für alle bestimmen, um nicht in jeder Iteration neu zu sortieren
     for person in state["persons"]:
-        person["privileges"] = get_privileges(person)
+        category = get_ranking_category(person, sorted_list)
+        person["privileges"] = get_privileges(person, category)
 
     return state
 
@@ -331,7 +324,10 @@ def render_index() -> Response | str:
         return redirect(url_for("render_login", next=request.path))
     user = current_user()
     person = get_current_person()
-    user_score = person["score"] # TODO BUG!
+    
+    # Sicherstellen, dass die Person existiert (z.B. admin ist kein Teil von current_state["persons"])
+    user_score = person["score"] if person else 0.0
+    
     return render_template("index.html",
                            logged_in_user=user,
                            display_name=USERS[user]["display_name"],
