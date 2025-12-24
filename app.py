@@ -392,9 +392,9 @@ def cut_vote_log():
     if not vote_log:
         return
 
-    flat_list = []
     # Über jede Person (Key) im Log iterieren
     for person in vote_log:
+        flat_list = []
         for votedBy in vote_log[person]:
             for vote in vote_log[person][votedBy]:
                 flat_entry = {
@@ -523,9 +523,9 @@ def increase_score(person_id: int) -> tuple[Response, int] | tuple[Response, int
         return jsonify({"error": "Es kann nicht für die eigene Person abgestimmt werden."}), 428
 
     user = current_user()
-    current_person = get_current_person()
 
     with state_lock:
+        current_person = get_current_person()
         allowed = can_vote_now(user, person_id, "inc")
         if not allowed:
             return jsonify({
@@ -560,9 +560,9 @@ def decrease_score(person_id: int) -> tuple[Response, int] | tuple[Response, int
         return jsonify({"error": "Es kann nicht für die eigene Person abgestimmt werden."}), 428
 
     user = current_user()
-    current_person = get_current_person()
 
     with state_lock:
+        current_person = get_current_person()
         allowed = can_vote_now(user, person_id, "dec")
         if not allowed:
             return jsonify({

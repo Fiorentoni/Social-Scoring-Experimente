@@ -676,13 +676,11 @@
     const textarea = document.getElementById('inputText');
     const cancelBtn = document.getElementById('cancelBtn');
     let lastFocus = null;
-    let personId = null;
-    let operation = null;
 
     function openModal(pId, name, operator) {
-        personId = pId;
-        operation = operator;
-        let operationName = (operation === "inc") ? "Upvote" : "Downvote";
+        form.dataset.personId = pId;
+        form.dataset.operation = operator;
+        let operationName = (operator === "inc") ? "Upvote" : "Downvote";
         
         modalTitle.textContent = "Anonymer Kommentar zum " + operationName + " an " + name;
         lastFocus = document.activeElement;
@@ -704,7 +702,9 @@
     form.addEventListener('submit', function(e) {
         e.preventDefault();
         const commentText = textarea.value.trim();
-        vote(personId, operation, commentText);
+        const pId = form.dataset.personId;
+        const op = form.dataset.operation;
+        vote(pId, op, commentText);
         closeModal();
     });
 
