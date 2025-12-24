@@ -267,19 +267,25 @@ def remove_privileges_from_state(state):
     for person in state["persons"]:
         person.pop("privileges", None)
 
-def bump_version() -> None:
+def bump_version() -> bool:
     global update_version
     global current_state
 
+    # Wir inkrementieren die Version lokal
     update_version += 1
     current_state["version"] = update_version
     cut_vote_log()
     remove_privileges_from_state(current_state)
 
-    save_state(current_state)
-
-    current_state = add_privileges_to_state(current_state)
-    version_condition.notify_all()
+    success = save_state(current_state)
+    
+    # Privilegien wieder hinzufügen für die Anzeige
+    add_privileges_to_state(current_state)
+    
+    if success:
+        version_condition.notify_all()
+    
+    return success
 
 def current_user() -> Any | None:
     user = session.get("user")
@@ -537,7 +543,8 @@ def increase_score(person_id: int) -> tuple[Response, int] | tuple[Response, int
         vote_weight = get_vote_weight(current_person)
         person["score"] = min(round(person["score"] + vote_weight, 2), 5)
         record_vote(user, person_id, "inc", comment)  # Vote vermerken
-        bump_version()
+        if not bump_version():
+            return jsonify({"error": "Konflikt beim Speichern. Bitte lade die Seite neu."}), 409
         return jsonify({"version": update_version, "person": person})
 
 @app.route("/api/persons/<int:person_id>/dec", methods=["POST"])
@@ -574,7 +581,8 @@ def decrease_score(person_id: int) -> tuple[Response, int] | tuple[Response, int
         vote_weight = get_vote_weight(current_person)
         person["score"] = max(round(person["score"] - vote_weight, 2),0)
         record_vote(user, person_id, "dec", comment)  # Vote vermerken
-        bump_version()
+        if not bump_version():
+            return jsonify({"error": "Konflikt beim Speichern. Bitte lade die Seite neu."}), 409
         return jsonify({"version": update_version, "person": person})
 
 @app.route("/api/updates", methods=["GET"])
