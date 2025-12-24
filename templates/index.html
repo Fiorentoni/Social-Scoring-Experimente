@@ -330,7 +330,10 @@
 
 <script>
     const personsBody = document.getElementById('personsBody');
+    const upvoteSound = new Audio('/static/upvote.mp3');
+    const downvoteSound = new Audio('/static/downvote.mp3');
     let currentVersion = 0;
+    let lastOwnScore = null;
     let voteLevel = 1;
     let voteLog;
     let remainingVotes;
@@ -403,6 +406,17 @@
             if (person.name === '{{ display_name }}') {
                 // Update ownScore
                 const ownScore = document.getElementById('userScore');
+                const newScore = person.score;
+                
+                // Sound abspielen bei Änderung (nur wenn es nicht der erste Load ist)
+                if (lastOwnScore !== null) {
+                    if (newScore > lastOwnScore) {
+                        upvoteSound.play().catch(e => console.warn("Audio play failed:", e));
+                    } else if (newScore < lastOwnScore) {
+                        downvoteSound.play().catch(e => console.warn("Audio play failed:", e));
+                    }
+                }
+                lastOwnScore = newScore;
                 ownScore.textContent = person.score;
 
                 buttonPlusDisabled = true;
@@ -595,15 +609,15 @@
             lastIndex = i;
             totalHtml += html;
         }
-        remainingVotes = length - lastIndex-1;
+        remainingVotes = Math.min(15,length - lastIndex-1);
         if (remainingVotes < 0) remainingVotes = 0;
         const button = document.getElementById('moreVotesButton');
         if (button !== null) {
             if (remainingVotes === 1) {
-                button.textContent = `Noch ein weiterer Kommentar (max. 15)`;
+                button.textContent = `Noch ein weiterer Kommentar (max. 15 gespeichert)`;
             }
             else if (remainingVotes > 0) {
-                button.textContent = `Noch ${remainingVotes} weitere Kommentare (max. 15)`;
+                button.textContent = `Noch ${remainingVotes} weitere Kommentare (max. 15 gespeichert)`;
             }
             else {
                 button.textContent = 'Zurück (keine weiteren Kommentare)'
@@ -684,6 +698,7 @@
     }
 
     let pollErrorCount = 0;
+
     async function pollLoop() {
         try {
             const res = await fetch(`/api/updates?since=${encodeURIComponent(currentVersion)}`);
