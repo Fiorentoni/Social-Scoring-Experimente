@@ -353,26 +353,38 @@ def get_current_person():
 
     return current_person
 
-def get_structured_vote_log(vote_log):
+def get_structured_vote_log(vote_log, all_logs=False):
     flat_list = []
 
     # 1. Struktur auflösen (Flatten)
-    for people in vote_log.items():
-        person_name = people[0]
-        for actions in people[1].items():
-            action_type = actions[0]
-            # Wir erstellen ein flaches Dictionary pro Eintrag
-            flat_entry = {
-                "person": person_name,
-                "operation": action_type,
-                "timestamp": actions[1]["timestamp"],
-                "comment": actions[1]["comment"]
-            }
-            if flat_entry["comment"] != "null":
-                flat_list.append(flat_entry)
+    if all_logs:
+        # Für Admin: Alle Logs aller Personen sammeln
+        for target_person_id, person_logs in vote_log.items():
+            for voter_name, actions in person_logs.items():
+                for action_type, details in actions.items():
+                    flat_entry = {
+                        "person": voter_name,
+                        "target": next((p["name"] for p in current_state["persons"] if str(p["id"]) == target_person_id), target_person_id),
+                        "operation": action_type,
+                        "timestamp": details["timestamp"],
+                        "comment": details["comment"]
+                    }
+                    if flat_entry["comment"] != "null":
+                        flat_list.append(flat_entry)
+    else:
+        # Für normale User: Nur eigene Logs
+        for voter_name, actions in vote_log.items():
+            for action_type, details in actions.items():
+                flat_entry = {
+                    "person": voter_name,
+                    "operation": action_type,
+                    "timestamp": details["timestamp"],
+                    "comment": details["comment"]
+                }
+                if flat_entry["comment"] != "null":
+                    flat_list.append(flat_entry)
 
     # 2. Sortieren nach Timestamp (neueste zuerst)
-    # Da ISO-Strings (YYYY-MM-DD) sortierbar sind, reicht ein String-Vergleich
     flat_list.sort(key=lambda x: x["timestamp"], reverse=True)
 
     # 3. Umwandeln in lokalen Timestamp
@@ -451,9 +463,14 @@ def get_persons() -> tuple[Response, int] | Response:
     add_privileges_to_state(current_state)
 
     with state_lock:
+        if current_user() == "admin":
+            logs = get_structured_vote_log(current_state["vote_log"], all_logs=True)
+        else:
+            logs = get_structured_vote_log(current_state["vote_log"].get(str(own_id), {}))
+
         return jsonify({"version": update_version, "persons": current_state["persons"], "plusCooldowns": plus_cooldowns,
                         "minusCooldowns": minus_cooldowns,
-                        "own_vote_log": get_structured_vote_log(current_state["vote_log"].get(str(own_id), {}))})
+                        "own_vote_log": logs})
 
 def get_current_cooldowns():
     global current_state
@@ -612,9 +629,14 @@ def long_poll_updates() -> tuple[Response, int] | Response:
 
         add_privileges_to_state(current_state)
 
+        if current_user() == "admin":
+            logs = get_structured_vote_log(current_state["vote_log"], all_logs=True)
+        else:
+            logs = get_structured_vote_log(current_state["vote_log"].get(str(own_id), {}))
+
         return jsonify({"changed": changed, "version": update_version, "persons": current_state["persons"],
                         "plusCooldowns": plus_cooldowns, "minusCooldowns": minus_cooldowns,
-                        "own_vote_log": get_structured_vote_log(current_state["vote_log"].get(str(own_id), {}))}), 200
+                        "own_vote_log": logs}), 200
 
 
 ######### Globaler Zustand im Speicher
