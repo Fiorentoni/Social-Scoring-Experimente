@@ -123,23 +123,22 @@ def load_current_state() -> Any:
     data = get_gist_data()
 
     # TODO Prevent overwriting of GIST file!
-    # TODO do not SAVE privileges to JSON!
     with gist_lock:
         if not data:
             data = {
                 "version": 0,
                 "persons": [
-                    {"id": 1, "name": "Annika", "photo": None, "score": STARTING_SCORE, "privileges": None},
-                    {"id": 2, "name": "Jonas", "photo": None, "score": STARTING_SCORE, "privileges": None},
-                    {"id": 3, "name": "Tesniem", "photo": None, "score": STARTING_SCORE, "privileges": None},
-                    {"id": 4, "name": "Nele", "photo": None, "score": STARTING_SCORE, "privileges": None},
-                    {"id": 5, "name": "Nelly", "photo": None, "score": STARTING_SCORE, "privileges": None},
-                    {"id": 6, "name": "Anna-Lena", "photo": None, "score": STARTING_SCORE, "privileges": None},
-                    {"id": 7, "name": "Levin", "photo": None, "score": STARTING_SCORE, "privileges": None},
-                    {"id": 8, "name": "Fynn", "photo": None, "score": STARTING_SCORE, "privileges": None},
-                    {"id": 9, "name": "Sadiyah", "photo": None, "score": STARTING_SCORE, "privileges": None},
-                    {"id": 10, "name": "Jan-Luca", "photo": None, "score": STARTING_SCORE, "privileges": None},
-                    {"id": 11, "name": "Samuel", "photo": None, "score": STARTING_SCORE, "privileges": None},
+                    {"id": 1, "name": "Annika", "photo": None, "score": STARTING_SCORE},
+                    {"id": 2, "name": "Jonas", "photo": None, "score": STARTING_SCORE},
+                    {"id": 3, "name": "Tesniem", "photo": None, "score": STARTING_SCORE},
+                    {"id": 4, "name": "Nele", "photo": None, "score": STARTING_SCORE},
+                    {"id": 5, "name": "Nelly", "photo": None, "score": STARTING_SCORE},
+                    {"id": 6, "name": "Anna-Lena", "photo": None, "score": STARTING_SCORE},
+                    {"id": 7, "name": "Levin", "photo": None, "score": STARTING_SCORE},
+                    {"id": 8, "name": "Fynn", "photo": None, "score": STARTING_SCORE},
+                    {"id": 9, "name": "Sadiyah", "photo": None, "score": STARTING_SCORE},
+                    {"id": 10, "name": "Jan-Luca", "photo": None, "score": STARTING_SCORE},
+                    {"id": 11, "name": "Samuel", "photo": None, "score": STARTING_SCORE},
                 ],
                 "vote_log": {}
             }
@@ -265,14 +264,21 @@ def add_privileges_to_state(state):
 
     return state
 
+def remove_privileges_from_state(state):
+    for person in state["persons"]:
+        person.pop("privileges", None)
+
 def bump_version() -> None:
     global update_version
     global current_state
+
     update_version += 1
     current_state["version"] = update_version
+    cut_vote_log()
+    remove_privileges_from_state(current_state)
+
     save_state(current_state)
 
-    # Update current_state mit Privilegien nur im lokalen Speicher
     current_state = add_privileges_to_state(current_state)
     version_condition.notify_all()
 
@@ -280,12 +286,10 @@ def current_user() -> Any | None:
     user = session.get("user")
     return user if user in USERS else None
 
-
 def ensure_logged_in_api() -> tuple[Response, int] | None:
     if not current_user():
         return jsonify({"error": "Nicht eingeloggt"}), 401
     return None
-
 
 @app.route("/login", methods=["GET", "POST"])
 def render_login() -> str | Response:
@@ -414,12 +418,14 @@ def cut_vote_log():
             if voter not in new_person_vote_log:
                 new_person_vote_log[voter] = {}
 
-            # TODO add eben operation!
+            if operation not in new_person_vote_log[voter]:
+                new_person_vote_log[voter][operation] = {}
+
             new_person_vote_log[voter][operation]["timestamp"] = entry["timestamp"]
             new_person_vote_log[voter][operation]["comment"] = entry["comment"]
 
-            # Den aktualisierten State zurückschreiben
-            current_state["vote_log"][person] = new_person_vote_log
+        # Den aktualisierten State zurückschreiben
+        current_state["vote_log"][person] = new_person_vote_log
 
 @app.route("/api/persons", methods=["GET"])
 def get_persons() -> tuple[Response, int] | Response:
@@ -429,21 +435,17 @@ def get_persons() -> tuple[Response, int] | Response:
     if not_logged:
         return not_logged
 
-    cut_vote_log()
-
     own_id = get_current_person()["id"]
     cooldowns = get_current_cooldowns()
     plus_cooldowns = cooldowns[0]
     minus_cooldowns = cooldowns[1]
 
+    add_privileges_to_state(current_state)
+
     with state_lock:
         return jsonify({"version": update_version, "persons": current_state["persons"], "plusCooldowns": plus_cooldowns,
                         "minusCooldowns": minus_cooldowns,
                         "own_vote_log": get_structured_vote_log(current_state["vote_log"].get(str(own_id), {}))})
-
-#TODO ergänze "gelesen" bei VoteLog und das automatische Ausblenden / alternativ manuell gelesen markierne
-# TODO laternativ: Votes haben id und bei "Gelesen" wird das Vote mit der entsprechenden Id gelöscht
-#  (zu viele Abfragen aber; stattdessen als gelöscht markiert nur?)
 
 def get_current_cooldowns():
     global current_state
@@ -480,7 +482,7 @@ def can_vote_now(user: str, person_id: int, desired_operation: str) -> tuple[boo
         return True, None
     delta = get_utc_now() - last_timestamp
     remaining_cooldown = VOTE_COOLDOWN_HOURS - delta
-    if delta >= VOTE_COOLDOWN_HOURS: # TODO fix
+    if delta >= VOTE_COOLDOWN_HOURS:
         return True
     else:
         return False
@@ -514,6 +516,7 @@ def increase_score(person_id: int) -> tuple[Response, int] | tuple[Response, int
 
     user = current_user()
     current_person = get_current_person()
+
     with state_lock:
         allowed = can_vote_now(user, person_id, "inc")
         if not allowed:
@@ -549,6 +552,7 @@ def decrease_score(person_id: int) -> tuple[Response, int] | tuple[Response, int
 
     user = current_user()
     current_person = get_current_person()
+
     with state_lock:
         allowed = can_vote_now(user, person_id, "dec")
         if not allowed:
@@ -584,17 +588,20 @@ def long_poll_updates() -> tuple[Response, int] | Response:
     except ValueError:
         since = 0
 
-    cut_vote_log()
-
     own_id = get_current_person()["id"]
-    cooldowns = get_current_cooldowns()
-    plus_cooldowns = cooldowns[0]
-    minus_cooldowns = cooldowns[1]
 #
     with version_condition:
         if update_version <= since:
             version_condition.wait(timeout=25.0)
+
         changed = update_version > since
+
+        cooldowns = get_current_cooldowns()
+        plus_cooldowns = cooldowns[0]
+        minus_cooldowns = cooldowns[1]
+
+        add_privileges_to_state(current_state)
+
         return jsonify({"changed": changed, "version": update_version, "persons": current_state["persons"],
                         "plusCooldowns": plus_cooldowns, "minusCooldowns": minus_cooldowns,
                         "own_vote_log": get_structured_vote_log(current_state["vote_log"].get(str(own_id), {}))}), 200
@@ -602,7 +609,6 @@ def long_poll_updates() -> tuple[Response, int] | Response:
 
 ######### Globaler Zustand im Speicher
 current_state = load_current_state()
-current_state = add_privileges_to_state(current_state)
 #########
 
 # TODO brauchen wir wirklich Jquery?
