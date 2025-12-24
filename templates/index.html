@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js" crossorigin="anonymous"></script>
-    <link href="/static/fontawesome-free-7.1.0-web/css/all.css" rel="stylesheet" />
     <title>Social-Scoring-Experiment</title>
+    <link href="/static/fontawesome-free-7.1.0-web/css/all.css" rel="stylesheet" />
     <style>
         :root {
             --bg: #daa2a6;
@@ -206,8 +205,32 @@
         }
         .footer-note { color: var(--muted); font-size: 12px; margin-top: 8px; }
         @media (max-width: 900px) {
-            .container { grid-template-columns: 1fr; }
-            .row { grid-template-columns: 56px 1fr 100px 180px; }
+            .container { grid-template-columns: 1fr; padding: 12px; }
+            .row { 
+                grid-template-columns: 40px 50px 1fr 60px; 
+                font-size: 18px; 
+                gap: 8px;
+            }
+            .person-avatar { width: 32px; height: 32px; }
+            .btn { padding: 6px 12px; font-size: 14px; margin: 2px; }
+            .actions { 
+                grid-column: 1 / -1; 
+                justify-content: center; 
+                margin-top: 8px; 
+                border-top: 1px dashed rgba(255,255,255,0.2);
+                padding-top: 8px;
+            }
+            .privileges {
+                left: 50%;
+                top: 100%;
+                transform: translateX(-50%);
+            }
+            .privileges::after {
+                top: -12px;
+                left: 50%;
+                transform: translateX(-50%);
+                border-color: transparent transparent var(--bg) transparent;
+            }
         }
         /* Overlay (Maske) ist initial unsichtbar */
         #inputModal {
@@ -594,27 +617,25 @@
             body.append("comment", comment);
             const res = await fetch(`/api/persons/${id}/${operation}`, { method: 'POST',
                 body: body });
+            
             if (res.status === 401) { window.location.href = '/login'; return; }
-            if (res.status === 429) {
-                const data = await res.json();
-                alert(data.error);
+            
+            const data = await res.json().catch(() => ({}));
+            
+            if (!res.ok) {
+                if (res.status === 409) {
+                    alert("Konflikt beim Speichern. Bitte lade die Seite neu, um den aktuellen Stand zu sehen.");
+                    window.location.reload();
+                } else {
+                    alert(data.error || "Ein unbekannter Fehler ist aufgetreten.");
+                }
                 return;
             }
-            if (res.status === 428) {
-                const data = await res.json();
-                alert(data.error);
-                return;
-            }
-            if (res.status === 427) {
-                const data = await res.json();
-                alert(data.error);
-                return;
-            }
-            if (!res.ok) return;
-            const data = await res.json();
+            
             currentVersion = data.version || currentVersion;
         } catch (e) {
             console.error('Vote-Fehler', e);
+            alert("Netzwerkfehler: Stimme konnte nicht gesendet werden.");
         }
     }
 
@@ -649,11 +670,11 @@
     })();
 
     // Alles was mit dem Comment-Fenster zu tun hat ist hier
-    const $modal = $('#inputModal');
-    const $modalTitle = $('#modalTitle');
-    const $form = $('#inputForm');
-    const $textarea = $('#inputText');
-    const $cancelBtn = $('#cancelBtn');
+    const modal = document.getElementById('inputModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const form = document.getElementById('inputForm');
+    const textarea = document.getElementById('inputText');
+    const cancelBtn = document.getElementById('cancelBtn');
     let lastFocus = null;
     let personId = null;
     let operation = null;
@@ -661,58 +682,67 @@
     function openModal(pId, name, operator) {
         personId = pId;
         operation = operator;
-        let operationName = "";
-        if (operation === "inc") {
-            operationName = "Upvote";
-        }
-        else {
-            operationName = "Downvote";
-        }
-        $modalTitle.text("Anonymer Kommentar zum " + operationName + " an " + name);
+        let operationName = (operation === "inc") ? "Upvote" : "Downvote";
+        
+        modalTitle.textContent = "Anonymer Kommentar zum " + operationName + " an " + name;
         lastFocus = document.activeElement;
-        $textarea.val('');
-        $modal.attr('aria-hidden', 'false').fadeIn(200, function() {
-            $textarea.focus();
-        });
+        textarea.value = '';
+        
+        modal.style.display = 'block';
+        modal.setAttribute('aria-hidden', 'false');
+        setTimeout(() => textarea.focus(), 50);
     }
 
     function closeModal() {
-        $modal.fadeOut(200, function() {
-            $modal.attr('aria-hidden', 'true');
-            if (lastFocus) $(lastFocus).trigger('focus');
-        });
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
+        if (lastFocus) lastFocus.focus();
     }
 
-    $cancelBtn.on('click', closeModal);
+    cancelBtn.addEventListener('click', closeModal);
 
-    $form.on('submit', function(e) {
+    form.addEventListener('submit', function(e) {
         e.preventDefault();
-        const commentText = $textarea.val().trim();
+        const commentText = textarea.value.trim();
         vote(personId, operation, commentText);
         closeModal();
     });
 
     // Klick außerhalb des Dialogs schließt die Maske
-    $modal.on('click', function(e) {
-        if ($(e.target).closest('.modal__dialog').length === 0) {
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
             closeModal();
         }
     });
 
     // ESC schließt die Maske
-    $(document).on('keydown', function(e) {
-        if (e.key === 'Escape' && $modal.is(':visible')) {
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && modal.style.display === 'block') {
             closeModal();
         }
     });
 
-    $(document).on('mouseenter', '.infoTooltip', function() {
-        $(this).closest('tr').find('.privileges').css({'visibility': 'visible', 'opacity': '1'});
-        // Hinweis: Opacity 1 statt 0, damit man etwas sieht
+    // Tooltips für Privilegien (Event Delegation)
+    document.addEventListener('mouseover', function(e) {
+        const infoIcon = e.target.closest('.infoTooltip');
+        if (infoIcon) {
+            const privileges = infoIcon.closest('tr').querySelector('.privileges');
+            if (privileges) {
+                privileges.style.visibility = 'visible';
+                privileges.style.opacity = '1';
+            }
+        }
     });
 
-    $(document).on('mouseleave', '.infoTooltip', function() {
-        $(this).closest('tr').find('.privileges').css({'visibility': 'hidden', 'opacity': '0'});
+    document.addEventListener('mouseout', function(e) {
+        const infoIcon = e.target.closest('.infoTooltip');
+        if (infoIcon) {
+            const privileges = infoIcon.closest('tr').querySelector('.privileges');
+            if (privileges) {
+                privileges.style.visibility = 'hidden';
+                privileges.style.opacity = '0';
+            }
+        }
     });
 
 </script>

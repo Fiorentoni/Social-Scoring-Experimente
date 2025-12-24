@@ -621,8 +621,6 @@ def long_poll_updates() -> tuple[Response, int] | Response:
 current_state = load_current_state()
 #########
 
-# TODO brauchen wir wirklich Jquery?
-
 if __name__ == "__main__":
     # Debug nur lokal; für Produktion WSGI-Server nutzen
     app.run(debug=True, threaded=True)
