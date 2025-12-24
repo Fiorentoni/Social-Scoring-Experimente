@@ -100,7 +100,7 @@ def get_gist_data():
         return json.loads(file_data)
     else:
         print("Fehler beim Laden:", response.text)
-        return {}
+        response.raise_for_status()
 
 def update_gist_data(new_data_list):
     """Speichert die komplette Liste zurück in den Gist."""
@@ -120,9 +120,15 @@ def update_gist_data(new_data_list):
 
 def load_current_state() -> Any:
     global update_version
-    data = get_gist_data()
 
-    # TODO Prevent overwriting of GIST file!
+    try:
+        data = get_gist_data()
+    except Exception as e:
+        print(f"KRITISCHER FEHLER beim Laden der Gist-Daten: {e}")
+        # Hier Programm abbrechen oder einen Fallback-Mechanismus nutzen,
+        # der NICHT das Gist überschreibt.
+        raise SystemExit("App konnte Daten nicht laden und wird beendet, um Datenverlust zu vermeiden.")
+
     with gist_lock:
         if not data:
             data = {
