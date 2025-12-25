@@ -90,6 +90,51 @@
             overflow: hidden;
         }
         .person-avatar img { width: 100%; height: 100%; object-fit: cover; display: none; }
+        .vote-counter {
+            position: absolute;
+            bottom: -5px;
+            right: -10px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            background: rgba(0,0,0,0.6);
+            border-radius: 6px;
+            padding: 2px 4px;
+            font-size: 12px;
+            font-weight: bold;
+            line-height: 1;
+            z-index: 10;
+        }
+        .vote-count-up { color: #4ade80; }
+        .vote-count-down { color: #f87171; }
+        .profile-score-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin: 10px 0;
+        }
+        .profile-vote-counter {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .vote-hint {
+            font-size: 10px;
+            color: var(--muted);
+            text-transform: uppercase;
+            margin-bottom: -2px;
+            text-align: center;
+        }
+        .score-up {
+            color: var(--primary) !important;
+            transition: color 0.3s ease;
+        }
+        .score-down {
+            color: var(--danger) !important;
+            transition: color 0.3s ease;
+        }
         .score {
             font-variant-numeric: tabular-nums; font-weight: 600;
         }
@@ -293,8 +338,9 @@
             margin-top: 4px;
             margin-bottom: 0;
         }
-        .comment-actions { display: flex; justify-content: flex-end;}
+        .comment-actions { display: flex; justify-content: flex-end; margin-top: 10px;}
         button { cursor: pointer; }
+        #sendDiaryBtn { margin-top: -20px; }
     </style>
 </head>
 <body>
@@ -321,7 +367,20 @@
                 <span id="userInitials">DU</span>
             </div>
             <span style="font-size: 30px; font-weight: bold;" id="userName">{{ display_name }}</span>
-            <span style="font-size: 40px; font-weight: bold" id="userScore">{% if user_score == 0 %}{% else %}{{ user_score }}{% endif %}</span>
+            <div class="profile-score-container">
+                <span style="font-size: 40px; font-weight: bold" id="userScore">{% if user_score == 0 %}{% else %}{{ user_score }}{% endif %}</span>
+                <div style="display: flex; flex-direction: column;">
+                    <span class="vote-hint">Letzte 24h</span>
+                    <div id="userVoteCounter" class="profile-vote-counter">
+                        {% if recent_ups > 0 %}
+                            <span class="vote-count-up"><i class="fa-solid fa-caret-up"></i> {{ recent_ups }} Upvotes</span>
+                        {% endif %}
+                        {% if recent_downs > 0 %}
+                            <span class="vote-count-down"><i class="fa-solid fa-caret-down"></i> {{ recent_downs }} Downvotes</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
             <div id="votesContainer"></div>
             <button class="btn btn-send" id="moreVotesButton" onclick="showNextVotes()">Noch X weitere Kommentare (max. 15)</button>
             <p></p>
@@ -432,6 +491,7 @@
             img.src = person.photo || placeholderDataUrl;
             img.style.display = 'block';
             avatar.appendChild(img);
+            
             tdPhoto.appendChild(avatar);
 
             // Name-Zelle
@@ -460,12 +520,32 @@
                 if (lastOwnScore !== null) {
                     if (newScore > lastOwnScore) {
                         upvoteSound.play().catch(e => console.warn("Audio play failed:", e));
+                        ownScore.classList.add('score-up');
+                        ownScore.classList.remove('score-down');
                     } else if (newScore < lastOwnScore) {
                         downvoteSound.play().catch(e => console.warn("Audio play failed:", e));
+                        ownScore.classList.add('score-down');
+                        ownScore.classList.remove('score-up');
                     }
                 }
                 lastOwnScore = newScore;
                 ownScore.textContent = person.score;
+
+                // 24h Vote Counter für das Profil aktualisieren
+                const userVoteCounter = document.getElementById('userVoteCounter');
+                userVoteCounter.innerHTML = '';
+                if (person.recent_ups > 0) {
+                    const upSpan = document.createElement('span');
+                    upSpan.className = 'vote-count-up';
+                    upSpan.innerHTML = `<i class="fa-solid fa-caret-up"></i> ${person.recent_ups} Upvotes`;
+                    userVoteCounter.appendChild(upSpan);
+                }
+                if (person.recent_downs > 0) {
+                    const downSpan = document.createElement('span');
+                    downSpan.className = 'vote-count-down';
+                    downSpan.innerHTML = `<i class="fa-solid fa-caret-down"></i> ${person.recent_downs} Downvotes`;
+                    userVoteCounter.appendChild(downSpan);
+                }
 
                 buttonPlusDisabled = true;
                 buttonMinusDisabled = true;

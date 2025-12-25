@@ -344,10 +344,18 @@ def render_index() -> Response | str:
     # Sicherstellen, dass die Person existiert (z.B. admin ist kein Teil von current_state["persons"])
     user_score = person["score"] if person else 0.0
     
+    # 24h Vote Counts für das Initial-Rendering (Template)
+    recent_ups = 0
+    recent_downs = 0
+    if person and person.get("id"):
+        recent_ups, recent_downs = get_recent_vote_counts(person["id"])
+    
     return render_template("index.html",
                            logged_in_user=user,
                            display_name=USERS[user]["display_name"],
-                           user_score=user_score)
+                           user_score=user_score,
+                           recent_ups=recent_ups,
+                           recent_downs=recent_downs)
 
 def get_current_person():
     global current_state
@@ -457,6 +465,30 @@ def cut_vote_log():
         # Den aktualisierten State zurückschreiben
         current_state["vote_log"][person] = new_person_vote_log
 
+def get_recent_vote_counts(person_id: int):
+    global current_state
+    now = get_utc_now()
+    cutoff = now - timedelta(hours=24)
+    
+    ups = 0
+    downs = 0
+    
+    vote_log = current_state.get("vote_log", {})
+    person_log = vote_log.get(str(person_id), {})
+    
+    for voter, actions in person_log.items():
+        for action, details in actions.items():
+            try:
+                ts = convert_from_iso_zulu(details["timestamp"])
+                if ts >= cutoff:
+                    if action == "inc":
+                        ups += 1
+                    elif action == "dec":
+                        downs += 1
+            except Exception:
+                continue
+    return ups, downs
+
 @app.route("/api/persons", methods=["GET"])
 def get_persons() -> tuple[Response, int] | Response:
     global current_state
@@ -471,6 +503,12 @@ def get_persons() -> tuple[Response, int] | Response:
     minus_cooldowns = cooldowns[1]
 
     add_privileges_to_state(current_state)
+
+    # Füge 24h Vote Counts hinzu
+    for person in current_state["persons"]:
+        ups, downs = get_recent_vote_counts(person["id"])
+        person["recent_ups"] = ups
+        person["recent_downs"] = downs
 
     with state_lock:
         if current_user() == "admin":
@@ -568,6 +606,12 @@ def increase_score(person_id: int) -> tuple[Response, int] | tuple[Response, int
         vote_weight = get_vote_weight(current_person)
         person["score"] = min(round(person["score"] + vote_weight, 2), 5)
         record_vote(user, person_id, "inc", comment)  # Vote vermerken
+        
+        # Unmittelbar Counts aktualisieren für die Response
+        ups, downs = get_recent_vote_counts(person_id)
+        person["recent_ups"] = ups
+        person["recent_downs"] = downs
+
         if not bump_version():
             return jsonify({"error": "Konflikt beim Speichern. Bitte lade die Seite neu."}), 409
         return jsonify({"version": update_version, "person": person})
@@ -606,6 +650,12 @@ def decrease_score(person_id: int) -> tuple[Response, int] | tuple[Response, int
         vote_weight = get_vote_weight(current_person)
         person["score"] = max(round(person["score"] - vote_weight, 2),0)
         record_vote(user, person_id, "dec", comment)  # Vote vermerken
+
+        # Unmittelbar Counts aktualisieren für die Response
+        ups, downs = get_recent_vote_counts(person_id)
+        person["recent_ups"] = ups
+        person["recent_downs"] = downs
+
         if not bump_version():
             return jsonify({"error": "Fehler - Konflikt beim Speichern. Bitte lade die Seite neu."}), 409
         return jsonify({"version": update_version, "person": person})
@@ -669,6 +719,12 @@ def long_poll_updates() -> tuple[Response, int] | Response:
         minus_cooldowns = cooldowns[1]
 
         add_privileges_to_state(current_state)
+
+        # Füge 24h Vote Counts hinzu
+        for person in current_state["persons"]:
+            ups, downs = get_recent_vote_counts(person["id"])
+            person["recent_ups"] = ups
+            person["recent_downs"] = downs
 
         if current_user() == "admin":
             logs = get_structured_vote_log(current_state["vote_log"], all_logs=True)
