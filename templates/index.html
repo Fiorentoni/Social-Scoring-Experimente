@@ -314,7 +314,7 @@
 
 <div class="container">
     <div class="card profile-card">
-        <h2>Dein Profil</h2>
+        <h2><i class="fa-solid fa-id-card"></i> Dein Profil</h2>
         <div class="profile">
             <div class="avatar" id="userAvatar" title="Nutzer-Foto">
                 <img id="userAvatarImg" alt="Avatar">
@@ -330,7 +330,7 @@
     </div>
 
     <div class="card table-card">
-        <h2>Highscore-Liste</h2>
+        <h2><i class="fa-solid fa-table-list"></i> Highscore-Liste</h2>
         <table aria-label="Highscore-Liste">
             <thead>
             <tr class="row">
@@ -345,7 +345,7 @@
         </table>
         <p class="footer-note">Hinweis: Die Liste wird live aktualisiert.</p>
         <div class="diary-container">
-            <h2>Eintrag ins Experiment-Tagebuch</h2>
+            <h2><i class="fa-solid fa-pen"></i> Eintrag ins Experiment-Tagebuch</h2>
 {#            TODO Add diary icon & score icons#}
             <textarea id="diaryEntry"  maxlength="500" rows="3" placeholder="Heutige Eindrücke, Gefühle, Gedanken zum Experiment"></textarea>
             <p class="diary-hint">Bitte keine persönlichen Daten eingeben.</p>
@@ -608,7 +608,8 @@
     }
 
     function renderVoteLog(voteLog, level) {
-        const length = voteLog.length;
+        const slicedVoteLog = voteLog.slice(0, 15);
+        const length = slicedVoteLog.length;
         let startIndex;
         let lastIndex;
         if (level === 1) startIndex = 0;
@@ -618,14 +619,14 @@
 
         let totalHtml = '<ul class="votelist">'
         for (let i = startIndex; i < startIndex+5; i++) {
-            if (voteLog[i] == null) {
+            if (slicedVoteLog[i] == null) {
                 break;
             }
 
-            let operation = voteLog[i]['operation'];
-            const timestamp = voteLog[i]['timestamp'];
-            const comment = voteLog[i]['comment'];
-            const target = voteLog[i]['target']; // Für Admin
+            let operation = slicedVoteLog[i]['operation'];
+            const timestamp = slicedVoteLog[i]['timestamp'];
+            const comment = slicedVoteLog[i]['comment'];
+            const target = slicedVoteLog[i]['target']; // Für Admin
             let className;
 
             if (operation === "inc") {
@@ -638,7 +639,7 @@
             }
 
             let saysName = false;
-            if (voteLog[i]['person'] === "admin") saysName = true;
+            if (slicedVoteLog[i]['person'] === "admin") saysName = true;
 
             let html;
             let headerText = saysName ? `Staatliches ${operation}` : operation;
@@ -657,18 +658,23 @@
             lastIndex = i;
             totalHtml += html;
         }
-        remainingVotes = Math.min(15,length - lastIndex-1);
+        remainingVotes = length - lastIndex-1;
         if (remainingVotes < 0) remainingVotes = 0;
         const button = document.getElementById('moreVotesButton');
         if (button !== null) {
             if (remainingVotes === 1) {
+                button.style.display = 'block';
                 button.textContent = `Noch ein weiterer Kommentar (max. 15 gespeichert)`;
             }
             else if (remainingVotes > 0) {
+                button.style.display = 'block';
                 button.textContent = `Noch ${remainingVotes} weitere Kommentare (max. 15 gespeichert)`;
             }
             else {
+                if (level === 1) button.style.display = 'none';
+                else button.style.display = 'block';
                 button.textContent = 'Zurück (keine weiteren Kommentare)'
+
             }
         }
         totalHtml += '</ul>';
