@@ -61,11 +61,39 @@
         .profile {
             display: flex; flex-direction: column; align-items: center;
         }
+        .avatar-container {
+            position: relative;
+            display: inline-block;
+        }
         .avatar {
             width: 120px; height: 120px; border-radius: 50%;
             background: #e0e7ff; display: flex; align-items: center; justify-content: center;
             font-weight: 700; font-size: 48px; color: #1f2937; user-select: none;
             overflow: hidden;
+            border: 2px solid white;
+            transition: filter 0.2s;
+            cursor: pointer;
+        }
+        .avatar-container:hover .avatar {
+            filter: brightness(0.9);
+        }
+        .edit-overlay {
+            position: absolute;
+            bottom: 0; left: -10px; 
+            width: 32px; height: 32px;
+            background: rgba(0,0,0,0.6);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            color: white;
+            font-size: 14px;
+            z-index: 10;
+            border: 1px solid rgba(255,255,255,0.3);
+            transition: opacity 0.2s, background 0.2s;
+            opacity: 1;
+        }
+        .edit-overlay:hover {
+            background: rgba(0,0,0,0.8);
         }
         .avatar img { width: 100%; height: 100%; object-fit: cover; display: none; }
         .profile input {
@@ -341,9 +369,66 @@
         .comment-actions { display: flex; justify-content: flex-end; margin-top: 10px;}
         button { cursor: pointer; }
         #sendDiaryBtn { margin-top: -20px; }
+        /* Modal für Foto-Zuschnitt */
+        #cropModal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 2000;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .crop-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            background: #333;
+            overflow: hidden;
+            border: 2px solid white;
+            cursor: move;
+            touch-action: none;
+        }
+        #cropImage {
+            position: absolute;
+            top: 0;
+            left: 0;
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+        .crop-overlay {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.5);
+            pointer-events: none;
+            border: 2px solid rgba(255,255,255,0.8);
+        }
+        .crop-actions {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
     </style>
 </head>
 <body>
+<div id="cropModal">
+    <h2 style="color: white; margin-bottom: 20px;">Bild positionieren</h2>
+    <div class="crop-container" id="cropContainer">
+        <img id="cropImage" src="" alt="Zu beschneidendes Bild">
+        <div class="crop-overlay"></div>
+    </div>
+    <div style="width: 300px; margin-top: 15px;">
+        <label for="zoomSlider" style="color: white; font-size: 14px; display: block; margin-bottom: 5px;">Zoom</label>
+        <input type="range" id="zoomSlider" min="1" max="3" step="0.01" value="1" style="width: 100%;">
+    </div>
+    <div class="crop-actions">
+        <button class="btn btn-cancel" id="cancelCropBtn">Abbrechen</button>
+        <button class="btn btn-send" id="saveCropBtn">Speichern</button>
+    </div>
+</div>
+
 <div id="toast-container"></div>
 <div id="inputModal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modalTitle">
     <div class="modal__dialog" role="document">
@@ -362,10 +447,16 @@
     <div class="card profile-card">
         <h2><i class="fa-solid fa-id-card"></i> Dein Profil</h2>
         <div class="profile">
-            <div class="avatar" id="userAvatar" title="Nutzer-Foto">
-                <img id="userAvatarImg" alt="Avatar">
-                <span id="userInitials">DU</span>
+            <div class="avatar-container">
+                <div class="avatar" id="userAvatar" onclick="document.getElementById('photoInput').click()" title="Foto hochladen">
+                    <img id="userAvatarImg" alt="Avatar" src="{{ photo if photo else '' }}" style="{{ 'display:block' if photo else 'display:none' }}">
+                    <span id="userInitials" style="{{ 'display:none' if photo else 'display:block' }}">{{ display_name | initials if not photo else '' }}</span>
+                </div>
+                <div class="edit-overlay" onclick="document.getElementById('photoInput').click()" title="Foto hochladen">
+                    <i class="fa-solid fa-pencil"></i>
+                </div>
             </div>
+            <input type="file" id="photoInput" style="display: none;" accept="image/*">
             <span style="font-size: 30px; font-weight: bold;" id="userName">{{ display_name }}</span>
             <div class="profile-score-container">
                 <span style="font-size: 40px; font-weight: bold" id="userScore">{% if user_score == 0 %}{% else %}{{ user_score }}{% endif %}</span>
@@ -445,6 +536,207 @@
     let voteLog;
     let remainingVotes;
 
+    // Foto-Upload & Drag-Crop Logik
+    const photoInput = document.getElementById('photoInput');
+    const userAvatarImg = document.getElementById('userAvatarImg');
+    const userInitials = document.getElementById('userInitials');
+    
+    const cropModal = document.getElementById('cropModal');
+    const cropImage = document.getElementById('cropImage');
+    const cropContainer = document.getElementById('cropContainer');
+    const zoomSlider = document.getElementById('zoomSlider');
+    const cancelCropBtn = document.getElementById('cancelCropBtn');
+    const saveCropBtn = document.getElementById('saveCropBtn');
+
+    let isDragging = false;
+    let startX, startY, imgX = 0, imgY = 0;
+    let baseImgScale = 1; // Die Skalierung, um den Container zu füllen
+    let currentZoom = 1; // Der zusätzliche Zoom vom Slider
+    let originalImgWidth, originalImgHeight;
+
+    photoInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            showToast("Bitte nur Bilder hochladen.");
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const img = new Image();
+            img.onload = function() {
+                originalImgWidth = img.width;
+                originalImgHeight = img.height;
+                
+                // Skalierung berechnen, damit das Bild den Container (300x300) mindestens ausfüllt
+                const containerSize = 300;
+                baseImgScale = Math.max(containerSize / img.width, containerSize / img.height);
+                currentZoom = 1;
+                zoomSlider.value = 1;
+                
+                cropImage.src = img.src;
+                updateImageScaleAndPosition(true); // Initial zentrieren
+                
+                cropModal.style.display = 'flex';
+            };
+            img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+
+    function updateImageScaleAndPosition(center = false) {
+        const containerSize = 300;
+        const totalScale = baseImgScale * currentZoom;
+        
+        const newWidth = originalImgWidth * totalScale;
+        const newHeight = originalImgHeight * totalScale;
+        
+        cropImage.style.width = newWidth + "px";
+        cropImage.style.height = newHeight + "px";
+        
+        if (center) {
+            imgX = (containerSize - newWidth) / 2;
+            imgY = (containerSize - newHeight) / 2;
+        } else {
+            // Sicherstellen, dass das Bild innerhalb der Grenzen bleibt
+            imgX = Math.min(0, Math.max(imgX, containerSize - newWidth));
+            imgY = Math.min(0, Math.max(imgY, containerSize - newHeight));
+        }
+        
+        updateImagePosition();
+    }
+
+    function updateImagePosition() {
+        cropImage.style.transform = `translate(${imgX}px, ${imgY}px)`;
+    }
+
+    zoomSlider.addEventListener('input', function() {
+        const oldZoom = currentZoom;
+        currentZoom = parseFloat(this.value);
+        
+        // Zoom-Zentrum berechnen (Mitte des Containers)
+        const containerSize = 300;
+        const centerX = containerSize / 2;
+        const centerY = containerSize / 2;
+        
+        // Relativen Abstand der Mitte zum Bildursprung berechnen
+        const relX = (centerX - imgX) / oldZoom;
+        const relY = (centerY - imgY) / oldZoom;
+        
+        // Neue Position berechnen, damit die Mitte gleich bleibt
+        imgX = centerX - relX * currentZoom;
+        imgY = centerY - relY * currentZoom;
+        
+        updateImageScaleAndPosition();
+    });
+
+    // Mausrad Zoom
+    cropContainer.addEventListener('wheel', function(e) {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? -0.05 : 0.05;
+        let newZoom = currentZoom + delta;
+        newZoom = Math.min(3, Math.max(1, newZoom));
+        
+        if (newZoom !== currentZoom) {
+            zoomSlider.value = newZoom;
+            zoomSlider.dispatchEvent(new Event('input'));
+        }
+    });
+
+    // Drag Funktionalität
+    function startDrag(e) {
+        isDragging = true;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        startX = clientX - imgX;
+        startY = clientY - imgY;
+        if (e.cancelable) e.preventDefault();
+    }
+
+    function doDrag(e) {
+        if (!isDragging) return;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        
+        imgX = clientX - startX;
+        imgY = clientY - startY;
+        
+        updateImageScaleAndPosition(); // Nutzt die Grenzen-Prüfung dort
+    }
+
+    function stopDrag() {
+        isDragging = false;
+    }
+
+    cropContainer.addEventListener('mousedown', startDrag);
+    window.addEventListener('mousemove', doDrag);
+    window.addEventListener('mouseup', stopDrag);
+    
+    cropContainer.addEventListener('touchstart', startDrag);
+    window.addEventListener('touchmove', doDrag);
+    window.addEventListener('touchend', stopDrag);
+
+    cancelCropBtn.addEventListener('click', () => {
+        cropModal.style.display = 'none';
+        photoInput.value = '';
+    });
+
+    saveCropBtn.addEventListener('click', () => {
+        const canvas = document.createElement('canvas');
+        const targetSize = 150; // Zielgröße für Gist
+        canvas.width = targetSize;
+        canvas.height = targetSize;
+        const ctx = canvas.getContext('2d');
+
+        // Umrechnung von Modal-Koordinaten (300px) auf Ziel-Koordinaten (150px)
+        const displayToTarget = targetSize / 300;
+        
+        // Der Ausschnitt aus dem Originalbild
+        const totalScale = baseImgScale * currentZoom;
+        const sourceX = -imgX / totalScale;
+        const sourceY = -imgY / totalScale;
+        const sourceSize = 300 / totalScale;
+
+        ctx.drawImage(cropImage, sourceX, sourceY, sourceSize, sourceSize, 0, 0, targetSize, targetSize);
+
+        const base64Data = canvas.toDataURL('image/jpeg', 0.6);
+
+        // An Backend senden
+        const formData = new FormData();
+        formData.append('photo', base64Data);
+
+        saveCropBtn.disabled = true;
+        saveCropBtn.textContent = "Speichere...";
+
+        fetch('/api/user/photo', {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                userAvatarImg.src = data.photo;
+                userAvatarImg.style.display = 'block';
+                userInitials.style.display = 'none';
+                showToast("Profilbild erfolgreich aktualisiert!");
+                cropModal.style.display = 'none';
+            } else {
+                showToast("Fehler: " + (data.error || "Unbekannter Fehler"));
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            showToast("Fehler beim Hochladen.");
+        })
+        .finally(() => {
+            saveCropBtn.disabled = false;
+            saveCropBtn.textContent = "Speichern";
+            photoInput.value = '';
+        });
+    });
+
     // Ein einfaches, datenschutzfreundliches Platzhalter-Bild als Data-URL (SVG)
     const placeholderDataUrl = 'data:image/svg+xml;utf8,' +
         encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64">' +
@@ -488,9 +780,13 @@
             avatar.className = 'person-avatar';
             const img = document.createElement('img');
             img.alt = 'Foto';
-            img.src = person.photo || placeholderDataUrl;
-            img.style.display = 'block';
-            avatar.appendChild(img);
+            if (person.photo) {
+                img.src = person.photo;
+                img.style.display = 'block';
+                avatar.appendChild(img);
+            } else {
+                avatar.textContent = initials(person.name);
+            }
             
             tdPhoto.appendChild(avatar);
 
@@ -514,7 +810,20 @@
             if (person.name === '{{ display_name }}') {
                 // Update ownScore
                 const ownScore = document.getElementById('userScore');
+                const userInitials = document.getElementById('userInitials');
+                const userAvatarImg = document.getElementById('userAvatarImg');
                 const newScore = person.score;
+
+                // Initialen setzen, falls kein Foto vorhanden
+                if (!person.photo) {
+                    userInitials.textContent = initials(person.name);
+                    userInitials.style.display = 'block';
+                    userAvatarImg.style.display = 'none';
+                } else {
+                    userAvatarImg.src = person.photo;
+                    userAvatarImg.style.display = 'block';
+                    userInitials.style.display = 'none';
+                }
                 
                 // Sound abspielen bei Änderung (nur wenn es nicht der erste Load ist)
                 if (lastOwnScore !== null) {

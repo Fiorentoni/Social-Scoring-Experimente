@@ -14,6 +14,15 @@ from werkzeug import Response
 # TODO auf FAST API umstellen
 
 app = Flask(__name__)
+
+@app.template_filter('initials')
+def initials_filter(name):
+    if not name:
+        return '??'
+    parts = name.strip().split()
+    a = parts[0][0] if len(parts) > 0 and len(parts[0]) > 0 else ''
+    b = parts[1][0] if len(parts) > 1 and len(parts[1]) > 0 else ''
+    return (a + b).upper()
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-me")
 app.permanent_session_lifetime = timedelta(days=30)
 app.config.update(
@@ -347,15 +356,18 @@ def render_index() -> Response | str:
     # 24h Vote Counts für das Initial-Rendering (Template)
     recent_ups = 0
     recent_downs = 0
+    photo = None
     if person and person.get("id"):
         recent_ups, recent_downs = get_recent_vote_counts(person["id"])
+        photo = person.get("photo")
     
     return render_template("index.html",
                            logged_in_user=user,
                            display_name=USERS[user]["display_name"],
                            user_score=user_score,
                            recent_ups=recent_ups,
-                           recent_downs=recent_downs)
+                           recent_downs=recent_downs,
+                           photo=photo)
 
 def get_current_person():
     global current_state
@@ -659,6 +671,40 @@ def decrease_score(person_id: int) -> tuple[Response, int] | tuple[Response, int
         if not bump_version():
             return jsonify({"error": "Fehler - Konflikt beim Speichern. Bitte lade die Seite neu."}), 409
         return jsonify({"version": update_version, "person": person})
+
+@app.route("/api/user/photo", methods=["POST"])
+def update_photo():
+    not_logged = ensure_logged_in_api()
+    if not_logged:
+        return jsonify({}), 401
+
+    photo_data = request.form.get("photo") # Base64 string
+    if not photo_data:
+        return jsonify({"error": "Kein Bild empfangen"}), 400
+
+    # Maximale Größe prüfen (grobe Schätzung für Base64)
+    # Gists haben ein Limit von ca. 1MB pro Datei.
+    # Bei 150x150 JPEG (0.6 Qual) ist ein Bild ca. 10-20 KB groß.
+    # 12 User * 20 KB = 240 KB. Das passt locker in das 1MB Gist.
+    if len(photo_data) > 100000: # ca 100KB Limit pro Foto im Backend
+        return jsonify({"error": "Bild ist zu groß"}), 413
+
+    with state_lock:
+        current_person = get_current_person()
+        if not current_person or current_person["name"] == "admin":
+            return jsonify({"error": "Nicht erlaubt"}), 403
+
+        # Person im State finden
+        person = next((p for p in current_state["persons"] if p["id"] == current_person["id"]), None)
+        if not person:
+            return jsonify({"error": "Person nicht gefunden"}), 404
+
+        person["photo"] = photo_data
+
+        if not bump_version():
+            return jsonify({"error": "Fehler beim Speichern des Fotos."}), 409
+
+        return jsonify({"success": True, "photo": photo_data})
 
 @app.route("/api/diary", methods=["POST"])
 def add_diary_entry():
