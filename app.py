@@ -25,11 +25,12 @@ app.config.update(
 
 # Konfiguration
 FILENAME = 'score.json'
+DIARY_FILENAME = 'diary.json'
 
 # TODO add same for diary
 # test
 
-HEADERS = {
+GIST_HEADERS = {
     "Authorization": f"Bearer {os.environ.get('GITHUB_TOKEN')}",
     "Accept": "application/vnd.github.v3+json",
     "X-GitHub-Api-Version": "2022-11-28"
@@ -69,7 +70,6 @@ VOTE_COOLDOWN_HOURS = timedelta(hours=12)
 
 MAX_SIZE_VOTE_LOG = 15
 
-
 USERS = {
     "Annika": {"display_name": "Annika", "password": "latein"},
     "Jonas": {"display_name": "Jonas", "password": "pazifik"},
@@ -88,6 +88,7 @@ USERS = {
 # Gemeinsamer Zustand + Synchronisation für Long-Polling
 state_lock = threading.Lock()
 gist_lock = threading.Lock()
+diary_lock = threading.Lock()
 version_condition = threading.Condition(state_lock)
 update_version = 0  # wird hochgezählt, wenn sich etwas ändert
 
@@ -112,9 +113,20 @@ def update_gist_data(new_data_list):
         }
     }
     response = requests.patch(f"https://api.github.com/gists/{os.environ.get("GIST_ID")}",
-                              headers=HEADERS,
+                              headers=GIST_HEADERS,
                               json=payload)
     return response.status_code == 200
+
+def get_diary_data():
+    """Lädt die JSON-Daten aus dem Diary."""
+    response = requests.get(f"https://api.github.com/gists/{os.environ.get("DIARY")}")
+    if response.status_code == 200:
+        gist_content = response.json()
+        file_data = gist_content['files'][DIARY_FILENAME]['content']
+        return json.loads(file_data)
+    else:
+        print("Fehler beim Laden des Tagebuchs:", response.text)
+        return None
 
 # TODO requests verhindern durch caching, sonst vielleicht Probleme mit GIT-TOKEN RATE LIMIT?!
 
@@ -150,8 +162,6 @@ def load_current_state() -> Any:
             }
 
             update_gist_data(data)
-
-            # TODO add diary filling
 
     update_version = data.get("version", 0)
 
@@ -519,8 +529,6 @@ def record_vote(user: str, person_id: int, operation: str, comment: str) -> None
     """
     global current_state
 
-    #TODO votes nachzählen pro Person - wenn zu viele, dann löschen, um Speicherplatz zu sparen
-    # Wenn Key im Dictionary, dann returne ihn. Ansonsten setze default.
     vote_log = current_state.setdefault("vote_log", {})
     vote_log_per_person = vote_log.setdefault(str(person_id), {})
     vote_log_per_person_for_user = vote_log_per_person.setdefault(str(user), {})
@@ -533,7 +541,7 @@ def increase_score(person_id: int) -> tuple[Response, int] | tuple[Response, int
 
     not_logged = ensure_logged_in_api()
     if not_logged:
-        return not_logged
+        return jsonify({}), 401
 
     # Nicht für eigene Person voten
     if person_id == get_current_person()['id']:
@@ -570,7 +578,7 @@ def decrease_score(person_id: int) -> tuple[Response, int] | tuple[Response, int
 
     not_logged = ensure_logged_in_api()
     if not_logged:
-        return not_logged
+        return jsonify({}), 401
 
     # Nicht für eigene Person voten
     if person_id == get_current_person()['id']:
@@ -599,8 +607,41 @@ def decrease_score(person_id: int) -> tuple[Response, int] | tuple[Response, int
         person["score"] = max(round(person["score"] - vote_weight, 2),0)
         record_vote(user, person_id, "dec", comment)  # Vote vermerken
         if not bump_version():
-            return jsonify({"error": "Konflikt beim Speichern. Bitte lade die Seite neu."}), 409
+            return jsonify({"error": "Fehler - Konflikt beim Speichern. Bitte lade die Seite neu."}), 409
         return jsonify({"version": update_version, "person": person})
+
+@app.route("/api/diary", methods=["POST"])
+def add_diary_entry():
+    not_logged = ensure_logged_in_api()
+    if not_logged:
+        return jsonify({}), 401
+
+    user_name = current_user()
+    text = request.form.get("text")
+    timestamp = convert_to_iso_zulu(get_utc_now())
+
+    with diary_lock:
+
+        diary_data = get_diary_data()
+        if diary_data is None:
+            return jsonify({"error": "Fehler - Tagebuch auf Server nicht gefunden"}), 404
+
+        diary_data.update({"name": user_name, "timestamp": timestamp, "text": text})
+
+        payload = {
+            "files": {
+                DIARY_FILENAME: {
+                    "content": json.dumps(diary_data, indent=4)
+                }
+            }
+        }
+        response = requests.patch(f"https://api.github.com/gists/{os.environ.get("DIARY")}",
+                                  headers=GIST_HEADERS,
+                                  json=payload)
+        if response.status_code != 200:
+            return jsonify({"error": f"Fehler beim Speichern des Tagebuches: {response.text}"}), 409
+        else:
+            return jsonify({"success": True}, 200)
 
 @app.route("/api/updates", methods=["GET"])
 def long_poll_updates() -> tuple[Response, int] | Response:
