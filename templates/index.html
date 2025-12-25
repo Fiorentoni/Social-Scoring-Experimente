@@ -73,7 +73,6 @@
             border: 1px solid var(--border); border-radius: 8px; background: #fafafa;
         }
         h2 { margin: 0 0 12px 0; font-size: 18px; }
-        .table-card h2 { margin-bottom: 16px; }
         table { width: 100%; border-collapse: collapse; }
         thead th {
             text-align: left; font-weight: 600; font-size: 14px; color: var(--muted);
@@ -273,8 +272,28 @@
             margin: 10vh auto;
             box-shadow: 0 20px 50px rgba(0,0,0,.2);
         }
-        textarea { width: 100%; box-sizing: border-box; padding: 10px; resize: vertical; }
-        .comment-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+        textarea {
+            max-width: 762px;
+            width: 100%;
+            box-sizing: border-box;
+            padding: 10px;
+            resize: vertical;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: #fafafa;
+            color: #1f2937;
+            font-family: inherit;
+        }
+        .diary-container {
+            max-width: 762px;
+        }
+        .diary-hint {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 4px;
+            margin-bottom: 0;
+        }
+        .comment-actions { display: flex; justify-content: flex-end;}
         button { cursor: pointer; }
     </style>
 </head>
@@ -325,6 +344,15 @@
             <tbody id="personsBody"></tbody>
         </table>
         <p class="footer-note">Hinweis: Die Liste wird live aktualisiert.</p>
+        <div class="diary-container">
+            <h2>Eintrag ins Experiment-Tagebuch</h2>
+{#            TODO Add diary icon & score icons#}
+            <textarea id="diaryEntry"  maxlength="500" rows="3" placeholder="Heutige Eindrücke, Gefühle, Gedanken zum Experiment"></textarea>
+            <p class="diary-hint">Bitte keine persönlichen Daten eingeben.</p>
+            <div class="comment-actions">
+                <button class="btn btn-send" type="button" id="sendDiaryBtn">Senden</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -332,6 +360,26 @@
     const personsBody = document.getElementById('personsBody');
     const upvoteSound = new Audio('/static/upvote.mp3');
     const downvoteSound = new Audio('/static/downvote.mp3');
+
+    // Browser blockieren Audio-Autoplay oft, bis eine Benutzerinteraktion stattfindet.
+    // Wir entsperren den Audio-Kontext beim ersten Klick auf die Seite.
+    function unlockAudio() {
+        upvoteSound.play().then(() => {
+            upvoteSound.pause();
+            upvoteSound.currentTime = 0;
+        }).catch(e => console.warn("Audio unlock failed for upvoteSound:", e));
+
+        downvoteSound.play().then(() => {
+            downvoteSound.pause();
+            downvoteSound.currentTime = 0;
+        }).catch(e => console.warn("Audio unlock failed for downvoteSound:", e));
+
+        document.removeEventListener('click', unlockAudio);
+        document.removeEventListener('touchstart', unlockAudio);
+        console.log("Audio context unlocked");
+    }
+    document.addEventListener('click', unlockAudio);
+    document.addEventListener('touchstart', unlockAudio);
     let currentVersion = 0;
     let lastOwnScore = null;
     let voteLevel = 1;
