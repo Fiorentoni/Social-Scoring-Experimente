@@ -8,8 +8,10 @@ import requests
 import json
 
 from flask import Flask, jsonify, request, render_template, session, redirect, \
-    url_for, Response
+    url_for, Response, send_file
 from werkzeug import Response
+from fpdf import FPDF
+import io
 
 # Framework configuration
 app = Flask(__name__)
@@ -791,6 +793,59 @@ def long_poll_updates() -> tuple[Response, int] | Response:
                         "plusCooldowns": plus_cooldowns, "minusCooldowns": minus_cooldowns,
                         "own_vote_log": logs}), 200
 
+
+@app.route("/api/admin/diary/pdf", methods=["GET"])
+def download_diary_pdf():
+    if current_user() != "admin":
+        return jsonify({"error": "Nicht autorisiert"}), 403
+
+    with diary_lock:
+        diary_data = get_diary_data()
+
+    if diary_data is None:
+        return jsonify({"error": "Keine Daten gefunden"}), 404
+
+    # PDF erstellen
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("helvetica", "B", 16)
+    pdf.cell(0, 10, "Experiment-Tagebuch (Gesamt)", ln=True, align="C")
+    pdf.ln(10)
+
+    for entry in diary_data:
+        name = entry.get("name", "Unbekannt")
+        ts = entry.get("timestamp", "")
+        text = entry.get("text", "")
+
+        # Formatierung für den PDF-Export
+        try:
+            dt = convert_from_iso_zulu(ts).strftime("%d.%m.%Y, %H:%M:%S")
+        except Exception:
+            dt = ts
+
+        pdf.set_font("helvetica", "B", 12)
+        pdf.cell(0, 8, f"{name} - {dt}", ln=True)
+        
+        pdf.set_font("helvetica", "", 12)
+        # Multi_cell für längere Texte
+        pdf.multi_cell(0, 8, text)
+        pdf.ln(5)
+        # Trennlinie
+        pdf.line(pdf.get_x(), pdf.get_y(), pdf.get_x() + 190, pdf.get_y())
+        pdf.ln(5)
+
+    # PDF in Buffer speichern
+    pdf_output = io.BytesIO()
+    pdf_bytes = pdf.output()
+    pdf_output.write(pdf_bytes)
+    pdf_output.seek(0)
+
+    return send_file(
+        pdf_output,
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name=f"diary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    )
 
 # Globaler Zustand im Speicher
 current_state = load_current_state()

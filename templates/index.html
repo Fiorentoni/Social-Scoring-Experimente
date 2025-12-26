@@ -461,18 +461,20 @@
             <div class="profile-score-container">
                 <span style="font-size: 40px; font-weight: bold" id="userScore">{% if user_score == 0 %}{% else %}{{ user_score }}{% endif %}</span>
                 <div id="userScoreIcon" style="font-size: 30px; margin-left: 10px;">
-                    {% if user_ranking_category == 1 %}
-                        <i class="fa-solid fa-crown" style="color: gold;"></i>
-                    {% elif user_ranking_category <= 3 %}
-                        <i class="fa-solid fa-star" style="color: gold;"></i>
-                    {% elif user_ranking_category <= 5 %}
-                        <i class="fa-solid fa-face-smile" style="color: #00bd21;"></i>
-                    {% elif user_ranking_category <= 7 %}
-                        <i class="fa-solid fa-face-meh" style="color: orange;"></i>
-                    {% elif user_ranking_category <= 10 %}
-                        <i class="fa-solid fa-face-frown" style="color: #ef4444;"></i>
-                    {% else %}
-                        <i class="fa-solid fa-face-sad-cry" style="color: #5e636e;"></i>
+                    {% if logged_in_user != 'admin' %}
+                        {% if user_ranking_category == 1 %}
+                            <i class="fa-solid fa-crown" style="color: gold;"></i>
+                        {% elif user_ranking_category <= 3 %}
+                            <i class="fa-solid fa-star" style="color: gold;"></i>
+                        {% elif user_ranking_category <= 5 %}
+                            <i class="fa-solid fa-face-smile" style="color: #00bd21;"></i>
+                        {% elif user_ranking_category <= 7 %}
+                            <i class="fa-solid fa-face-meh" style="color: orange;"></i>
+                        {% elif user_ranking_category <= 10 %}
+                            <i class="fa-solid fa-face-frown" style="color: #ef4444;"></i>
+                        {% else %}
+                            <i class="fa-solid fa-face-sad-cry" style="color: #5e636e;"></i>
+                        {% endif %}
                     {% endif %}
                 </div>
                 <div id="recentVoteContainer" style="display: {% if recent_ups > 0 or recent_downs > 0 %}flex{% else %}none{% endif %}; flex-direction: column;">
@@ -515,6 +517,11 @@
             <p class="diary-hint">Bitte keine persönlichen Daten eingeben.</p>
             <div class="comment-actions">
                 <button class="btn btn-send" type="button" id="sendDiaryBtn" onclick="sendDiaryEntry()">Senden</button>
+                {% if logged_in_user == 'admin' %}
+                    <button class="btn btn-send" type="button" onclick="location.href='/api/admin/diary/pdf'" style="background-color: #4a5568;">
+                        <i class="fa-solid fa-file-pdf"></i> Tagebuch-Export (PDF)
+                    </button>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -815,13 +822,15 @@
             
             // Icon basierend auf Ranking-Kategorie hinzufügen
             let scoreIcon = '';
-            const cat = person.ranking_category;
-            if (cat === 1) scoreIcon = '<i class="fa-solid fa-crown" style="color: gold; margin-right: 4px;"></i>';
-            else if (cat <= 3) scoreIcon = '<i class="fa-solid fa-star" style="color: gold; margin-right: 4px;"></i>';
-            else if (cat <= 5) scoreIcon = '<i class="fa-solid fa-face-smile" style="color: #00bd21; margin-right: 4px;"></i>';
-            else if (cat <= 7) scoreIcon = '<i class="fa-solid fa-face-meh" style="color: orange; margin-right: 4px;"></i>';
-            else if (cat <= 10) scoreIcon = '<i class="fa-solid fa-face-frown" style="color: #ef4444; margin-right: 4px;"></i>';
-            else scoreIcon = '<i class="fa-solid fa-face-sad-cry" style="color: #5e636e; margin-right: 4px;"></i>';
+            if (person.name !== 'Admin') {
+                const cat = person.ranking_category;
+                if (cat === 1) scoreIcon = '<i class="fa-solid fa-crown" style="color: gold; margin-right: 4px;"></i>';
+                else if (cat <= 3) scoreIcon = '<i class="fa-solid fa-star" style="color: gold; margin-right: 4px;"></i>';
+                else if (cat <= 5) scoreIcon = '<i class="fa-solid fa-face-smile" style="color: #00bd21; margin-right: 4px;"></i>';
+                else if (cat <= 7) scoreIcon = '<i class="fa-solid fa-face-meh" style="color: orange; margin-right: 4px;"></i>';
+                else if (cat <= 10) scoreIcon = '<i class="fa-solid fa-face-frown" style="color: #ef4444; margin-right: 4px;"></i>';
+                else scoreIcon = '<i class="fa-solid fa-face-sad-cry" style="color: #5e636e; margin-right: 4px;"></i>';
+            }
 
             scoreSpan.innerHTML = scoreIcon + Number(person.score).toFixed(2);
             tdScore.appendChild(scoreSpan);
@@ -867,13 +876,17 @@
 
                 // User Score Icon aktualisieren
                 const userScoreIcon = document.getElementById('userScoreIcon');
-                const ownCat = person.ranking_category;
-                if (ownCat === 1) userScoreIcon.innerHTML = '<i class="fa-solid fa-crown" style="color: gold;"></i>';
-                else if (ownCat <= 3) userScoreIcon.innerHTML = '<i class="fa-solid fa-star" style="color: gold;"></i>';
-                else if (ownCat <= 5) userScoreIcon.innerHTML = '<i class="fa-solid fa-face-smile" style="color: #00bd21;"></i>';
-                else if (ownCat <= 7) userScoreIcon.innerHTML = '<i class="fa-solid fa-face-meh" style="color: orange;"></i>';
-                else if (ownCat <= 10) userScoreIcon.innerHTML = '<i class="fa-solid fa-face-frown" style="color: #ef4444;"></i>';
-                else userScoreIcon.innerHTML = '<i class="fa-solid fa-face-sad-cry" style="color: #5e636e;"></i>';
+                if ('{{ logged_in_user }}' !== 'admin') {
+                    const ownCat = person.ranking_category;
+                    if (ownCat === 1) userScoreIcon.innerHTML = '<i class="fa-solid fa-crown" style="color: gold;"></i>';
+                    else if (ownCat <= 3) userScoreIcon.innerHTML = '<i class="fa-solid fa-star" style="color: gold;"></i>';
+                    else if (ownCat <= 5) userScoreIcon.innerHTML = '<i class="fa-solid fa-face-smile" style="color: #00bd21;"></i>';
+                    else if (ownCat <= 7) userScoreIcon.innerHTML = '<i class="fa-solid fa-face-meh" style="color: orange;"></i>';
+                    else if (ownCat <= 10) userScoreIcon.innerHTML = '<i class="fa-solid fa-face-frown" style="color: #ef4444;"></i>';
+                    else userScoreIcon.innerHTML = '<i class="fa-solid fa-face-sad-cry" style="color: #5e636e;"></i>';
+                } else {
+                    userScoreIcon.innerHTML = '';
+                }
 
                 // 24h Vote Counter für das Profil aktualisieren
                 const userVoteCounter = document.getElementById('userVoteCounter');
