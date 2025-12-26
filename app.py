@@ -850,6 +850,76 @@ def delete_user(person_id):
             
     return jsonify({"success": True})
 
+@app.route("/api/admin/users/update", methods=["POST"])
+def update_user():
+    if current_user() != "admin":
+        return jsonify({"error": "Nicht autorisiert"}), 403
+    
+    person_id = request.form.get("id")
+    new_name = request.form.get("name")
+    new_password = request.form.get("password")
+    
+    if not person_id:
+        return jsonify({"error": "ID erforderlich"}), 400
+    
+    try:
+        person_id = int(person_id)
+    except ValueError:
+        return jsonify({"error": "Ungültige ID"}), 400
+
+    with state_lock:
+        person = next((p for p in current_state["persons"] if p["id"] == person_id), None)
+        if not person:
+            return jsonify({"error": "Benutzer nicht gefunden"}), 404
+        
+        if new_name is not None:
+            new_name = new_name.strip()
+            if not new_name:
+                return jsonify({"error": "Name darf nicht leer sein"}), 400
+            # Prüfen ob der neue Name bereits von einem ANDEREN Benutzer verwendet wird
+            if any(p["name"] == new_name and p["id"] != person_id for p in current_state["persons"]):
+                return jsonify({"error": "Benutzername bereits vergeben"}), 400
+            person["name"] = new_name
+
+        if new_password is not None:
+            new_password = new_password.strip()
+            if not new_password:
+                return jsonify({"error": "Passwort darf nicht leer sein"}), 400
+            person["password"] = new_password
+        
+        if new_name is None and new_password is None:
+            return jsonify({"error": "Keine Änderungen angegeben"}), 400
+
+        if not bump_version():
+            return jsonify({"error": "Fehler beim Speichern"}), 500
+            
+    return jsonify({"success": True})
+
+@app.route("/api/user/change_password", methods=["POST"])
+def change_password():
+    user = current_user()
+    if not user:
+        return jsonify({"error": "Nicht eingeloggt"}), 401
+    
+    new_password = (request.form.get("password") or "").strip()
+    if not new_password:
+        return jsonify({"error": "Neues Passwort erforderlich"}), 400
+    
+    if user == "admin":
+        return jsonify({"error": "Admin-Passwort kann hier nicht geändert werden"}), 403
+
+    with state_lock:
+        person = next((p for p in current_state["persons"] if p["name"] == user), None)
+        if not person:
+            return jsonify({"error": "Benutzer nicht gefunden"}), 404
+        
+        person["password"] = new_password
+        
+        if not bump_version():
+            return jsonify({"error": "Fehler beim Speichern"}), 500
+            
+    return jsonify({"success": True})
+
 @app.route("/api/admin/diary/pdf", methods=["GET"])
 def download_diary_pdf():
     if current_user() != "admin":

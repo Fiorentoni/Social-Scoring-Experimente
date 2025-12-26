@@ -89,11 +89,12 @@
             font-size: 14px;
             z-index: 10;
             border: 1px solid rgba(255,255,255,0.3);
-            transition: opacity 0.2s, background 0.2s;
+            transition: opacity 0.2s, background 0.2s, transform 0.2s;
             opacity: 1;
         }
         .edit-overlay:hover {
             background: rgba(0,0,0,0.8);
+            transform: scale(1.1);
         }
         .avatar img { width: 100%; height: 100%; object-fit: cover; display: none; }
         .profile input {
@@ -154,6 +155,34 @@
             text-transform: uppercase;
             margin-bottom: -2px;
             text-align: center;
+        }
+        .diary-input-wrapper {
+            display: flex;
+            gap: 10px;
+            align-items: stretch;
+            margin-bottom: 5px;
+        }
+        .diary-input-wrapper textarea {
+            flex: 1;
+        }
+        .btn-export {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            background-color: #4a5568 !important;
+            color: white;
+            border-radius: 10px;
+            cursor: pointer;
+            border: none;
+            font-weight: 700;
+            width: 100px;
+            font-size: 12px;
+            gap: 5px;
+        }
+        .btn-export i {
+            font-size: 20px;
         }
         .score-up {
             color: var(--primary) !important;
@@ -435,6 +464,7 @@
         <h2 id="modalTitle"></h2>
         <form id="inputForm">
             <textarea id="inputText" maxlength="100" rows="6" placeholder="Maximal 100 Zeichen"></textarea>
+            <p class="footer-note">Hinweis zu "anonym": Der Autor des Kommentars ist nur für den Admin sichtbar.</p>
             <div class="comment-actions">
                 <button class="btn btn-cancel" type="button" id="cancelBtn">Abbrechen</button>
                 <button class="btn btn-send" type="submit">Senden</button>
@@ -453,8 +483,13 @@
                     <span id="userInitials" style="{{ 'display:none' if photo else 'display:block' }}">{{ display_name | initials if not photo else '' }}</span>
                 </div>
                 <div class="edit-overlay" onclick="document.getElementById('photoInput').click()" title="Foto hochladen">
-                    <i class="fa-solid fa-pencil"></i>
+                    <i class="fa-solid fa-image"></i>
                 </div>
+                {% if logged_in_user != 'admin' %}
+                <div class="edit-overlay" onclick="openChangePasswordModal()" title="Passwort ändern" style="left: auto; right: -10px;">
+                    <i class="fa-solid fa-key"></i>
+                </div>
+                {% endif %}
             </div>
             <input type="file" id="photoInput" style="display: none;" accept="image/*">
             <span style="font-size: 30px; font-weight: bold;" id="userName">{{ display_name }}</span>
@@ -497,7 +532,16 @@
     </div>
 
     <div class="card table-card">
-        <h2><i class="fa-solid fa-table-list"></i> Highscore-Liste</h2>
+        <div style="margin-bottom: 12px;">
+            <h2 style="margin: 0;"><i class="fa-solid fa-table-list"></i> Highscore-Liste</h2>
+            {% if logged_in_user == 'admin' %}
+                <div style="margin-top: 10px;">
+                    <button class="btn btn-send" onclick="openAddUserModal()" style="margin: 0; width: 100%; justify-content: center;">
+                        <i class="fa-solid fa-user-plus"></i> Benutzer hinzufügen
+                    </button>
+                </div>
+            {% endif %}
+        </div>
         <table aria-label="Highscore-Liste">
             <thead>
             <tr class="row">
@@ -513,36 +557,82 @@
         <p class="footer-note">Hinweis: Die Liste wird live aktualisiert.</p>
         <div class="diary-container">
             <h2><i class="fa-solid fa-book"></i> Eintrag ins Experiment-Tagebuch</h2>
-            <textarea id="diaryEntry"  maxlength="500" rows="3" placeholder="Heutige Eindrücke, Gefühle, Gedanken zum Experiment"></textarea>
-            <p class="diary-hint">Bitte keine persönlichen Daten eingeben.</p>
-            <div class="comment-actions">
-                <button class="btn btn-send" type="button" id="sendDiaryBtn" onclick="sendDiaryEntry()">Senden</button>
+            <div class="diary-input-wrapper">
+                <textarea id="diaryEntry"  maxlength="500" rows="3" placeholder="Heutige Eindrücke, Gefühle, Gedanken zum Experiment"></textarea>
                 {% if logged_in_user == 'admin' %}
-                    <button class="btn btn-send" type="button" onclick="location.href='/api/admin/diary/pdf'" style="background-color: #4a5568;">
-                        <i class="fa-solid fa-file-pdf"></i> Tagebuch-Export (PDF)
+                    <button class="btn-export" type="button" onclick="location.href='/api/admin/diary/pdf'" title="Tagebuch-Export (PDF)">
+                        <i class="fa-solid fa-file-pdf"></i> PDF Export aller Tagebücher
                     </button>
                 {% endif %}
             </div>
+            <p class="diary-hint">Bitte keine persönlichen Daten eingeben.</p>
+            <div class="comment-actions">
+                <button class="btn btn-send" type="button" id="sendDiaryBtn" onclick="sendDiaryEntry()">Senden</button>
+            </div>
         </div>
 
-        {% if logged_in_user == 'admin' %}
-            <div class="card admin-user-card" style="margin-top: 24px; background: rgba(0,0,0,0.05); border: 1px dashed var(--muted);">
-                <h2><i class="fa-solid fa-user-gear"></i> Benutzerverwaltung (Admin)</h2>
-                <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
-                    <div style="flex: 1; min-width: 200px;">
-                        <label for="newUserName" style="display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px;">Name</label>
-                        <input type="text" id="newUserName" placeholder="Name" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); color: #1f2937;">
-                    </div>
-                    <div style="flex: 1; min-width: 200px;">
-                        <label for="newUserPassword" style="display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px;">Passwort</label>
-                        <input type="text" id="newUserPassword" placeholder="Passwort" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); color: #1f2937;">
-                    </div>
-                    <div style="padding-top: 20px;">
-                        <button class="btn btn-send" onclick="addUser()" style="white-space: nowrap;">Benutzer hinzufügen</button>
-                    </div>
+        <!-- Passwort ändern Modal -->
+        <div id="passwordModal" class="modal" style="display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center;">
+            <div class="card" style="width: 90%; max-width: 400px; background: white; color: #1f2937;">
+                <h2 style="color: #1f2937;"><i class="fa-solid fa-key"></i> Passwort ändern</h2>
+                <div style="margin-bottom: 16px;">
+                    <label for="newSelfPassword" style="display: block; font-size: 14px; color: var(--muted); margin-bottom: 4px;">Neues Passwort</label>
+                    <input type="password" id="newSelfPassword" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); box-sizing: border-box;">
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                    <button class="btn-cancel" onclick="closeChangePasswordModal()">Abbrechen</button>
+                    <button class="btn-send" onclick="submitChangePassword()">Speichern</button>
                 </div>
             </div>
-        {% endif %}
+        </div>
+
+        <!-- Benutzer bearbeiten Modal -->
+        <div id="editUserModal" class="modal" style="display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center;">
+            <div class="card" style="width: 90%; max-width: 400px; background: white; color: #1f2937;">
+                <h2 style="color: #1f2937;"><i class="fa-solid fa-user-pen"></i> Benutzer bearbeiten</h2>
+                <input type="hidden" id="editUserId">
+                
+                <div style="margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 15px;">
+                    <label for="editUserName" style="display: block; font-size: 14px; color: var(--muted); margin-bottom: 4px;">Name ändern</label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="editUserName" style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border); box-sizing: border-box;">
+                        <button class="btn-send" onclick="submitEditUserName()" style="padding: 8px 12px; margin: 0; font-size: 14px;">Name speichern</button>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <label for="editUserPassword" style="display: block; font-size: 14px; color: var(--muted); margin-bottom: 4px;">Passwort ändern</label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="editUserPassword" style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border); box-sizing: border-box;">
+                        <button class="btn-send" onclick="submitEditUserPassword()" style="padding: 8px 12px; margin: 0; font-size: 14px;">PW speichern</button>
+                    </div>
+                </div>
+                
+                <div style="display: flex; justify-content: center;">
+                    <button class="btn-cancel" onclick="closeEditUserModal()" style="width: 100%;">Schließen</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Benutzer hinzufügen Modal -->
+        <div id="addUserModal" class="modal" style="display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center;">
+            <div class="card" style="width: 90%; max-width: 400px; background: white; color: #1f2937;">
+                <h2 style="color: #1f2937;"><i class="fa-solid fa-user-plus"></i> Benutzer hinzufügen</h2>
+                <div style="margin-bottom: 16px;">
+                    <label for="newUserName" style="display: block; font-size: 14px; color: var(--muted); margin-bottom: 4px;">Name</label>
+                    <input type="text" id="newUserName" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); box-sizing: border-box;">
+                </div>
+                <div style="margin-bottom: 16px;">
+                    <label for="newUserPassword" style="display: block; font-size: 14px; color: var(--muted); margin-bottom: 4px;">Passwort</label>
+                    <input type="text" id="newUserPassword" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); box-sizing: border-box;">
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                    <button class="btn-cancel" onclick="closeAddUserModal()">Abbrechen</button>
+                    <button class="btn-send" onclick="addUser()">Hinzufügen</button>
+                </div>
+            </div>
+        </div>
+
     </div>
 </div>
 
@@ -834,11 +924,28 @@
             const tdName = document.createElement('td');
             tdName.textContent = person.name;
             if ('{{ logged_in_user }}' === 'admin' && person.name !== 'admin') {
+                // Bearbeiten Button
+                const editBtn = document.createElement('button');
+                editBtn.className = 'btn btn-cancel';
+                editBtn.style.padding = '2px 8px';
+                editBtn.style.fontSize = '14px';
+                editBtn.style.marginLeft = '10px';
+                editBtn.style.verticalAlign = 'middle';
+                editBtn.style.color = '#4a5568';
+                editBtn.title = "Benutzer bearbeiten";
+                editBtn.innerHTML = '<i class="fa-solid fa-pen"></i>';
+                editBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    openEditUserModal(person.id, person.name, person.password);
+                };
+                tdName.appendChild(editBtn);
+
+                // Löschen Button
                 const delBtn = document.createElement('button');
                 delBtn.className = 'btn btn-cancel';
                 delBtn.style.padding = '2px 8px';
                 delBtn.style.fontSize = '14px';
-                delBtn.style.marginLeft = '10px';
+                delBtn.style.marginLeft = '5px';
                 delBtn.style.verticalAlign = 'middle';
                 delBtn.title = "Benutzer löschen";
                 delBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
@@ -1319,6 +1426,7 @@
                 showToast(`Benutzer ${name} erfolgreich hinzugefügt.`);
                 nameInput.value = '';
                 passInput.value = '';
+                closeAddUserModal();
             } else {
                 showToast("Fehler: " + (data.error || "Unbekannter Fehler"));
             }
@@ -1345,6 +1453,110 @@
         } catch (e) {
             console.error(e);
             showToast("Netzwerkfehler beim Löschen des Benutzers.");
+        }
+    }
+
+    // Modal Funktionen
+    function openChangePasswordModal() {
+        document.getElementById('passwordModal').style.display = 'flex';
+        document.getElementById('newSelfPassword').value = '';
+        document.getElementById('newSelfPassword').focus();
+    }
+    function closeChangePasswordModal() {
+        document.getElementById('passwordModal').style.display = 'none';
+    }
+    function openAddUserModal() {
+        document.getElementById('addUserModal').style.display = 'flex';
+        document.getElementById('newUserName').value = '';
+        document.getElementById('newUserPassword').value = '';
+        document.getElementById('newUserName').focus();
+    }
+    function closeAddUserModal() {
+        document.getElementById('addUserModal').style.display = 'none';
+    }
+    async function submitChangePassword() {
+        const password = document.getElementById('newSelfPassword').value.trim();
+        if (!password) {
+            showToast("Bitte ein Passwort eingeben.");
+            return;
+        }
+        try {
+            const body = new URLSearchParams();
+            body.append("password", password);
+            const response = await fetch('/api/user/change_password', { method: 'POST', body: body });
+            if (response.ok) {
+                showToast("Passwort erfolgreich geändert.");
+                closeChangePasswordModal();
+            } else {
+                const data = await response.json();
+                showToast(data.error || "Fehler beim Ändern des Passworts.");
+            }
+        } catch (e) {
+            showToast("Netzwerkfehler.");
+        }
+    }
+
+    function openEditUserModal(id, name, password) {
+        document.getElementById('editUserId').value = id;
+        document.getElementById('editUserName').value = name;
+        document.getElementById('editUserPassword').value = password || '';
+        document.getElementById('editUserModal').style.display = 'flex';
+    }
+    function closeEditUserModal() {
+        document.getElementById('editUserModal').style.display = 'none';
+    }
+    async function submitEditUserName() {
+        const id = document.getElementById('editUserId').value;
+        const name = document.getElementById('editUserName').value.trim();
+
+        if (!name) {
+            showToast("Name erforderlich.");
+            return;
+        }
+
+        try {
+            const body = new URLSearchParams();
+            body.append("id", id);
+            body.append("name", name);
+
+            const response = await fetch('/api/admin/users/update', { method: 'POST', body: body });
+            if (response.ok) {
+                showToast("Name aktualisiert.");
+                closeEditUserModal();
+            } else {
+                const data = await response.json();
+                showToast(data.error || "Fehler beim Aktualisieren.");
+            }
+        } catch (e) {
+            showToast("Netzwerkfehler.");
+        }
+    }
+
+    async function submitEditUserPassword() {
+        const id = document.getElementById('editUserId').value;
+        const password = document.getElementById('editUserPassword').value.trim();
+
+        if (!password) {
+            showToast("Passwort erforderlich.");
+            return;
+        }
+
+        try {
+            const body = new URLSearchParams();
+            body.append("id", id);
+            body.append("password", password);
+
+            const response = await fetch('/api/admin/users/update', { method: 'POST', body: body });
+            if (response.ok) {
+                showToast("Passwort aktualisiert.");
+                document.getElementById('editUserPassword').value = ''; // Passwortfeld leeren nach Erfolg
+                closeEditUserModal();
+            } else {
+                const data = await response.json();
+                showToast(data.error || "Fehler beim Aktualisieren.");
+            }
+        } catch (e) {
+            showToast("Netzwerkfehler.");
         }
     }
 
