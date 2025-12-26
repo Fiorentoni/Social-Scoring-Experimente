@@ -460,7 +460,7 @@
             <span style="font-size: 30px; font-weight: bold;" id="userName">{{ display_name }}</span>
             <div class="profile-score-container">
                 <span style="font-size: 40px; font-weight: bold" id="userScore">{% if user_score == 0 %}{% else %}{{ user_score }}{% endif %}</span>
-                <div style="display: flex; flex-direction: column;">
+                <div id="recentVoteContainer" style="display: {% if recent_ups > 0 or recent_downs > 0 %}flex{% else %}none{% endif %}; flex-direction: column;">
                     <span class="vote-hint">Letzte 24h</span>
                     <div id="userVoteCounter" class="profile-vote-counter">
                         {% if recent_ups > 0 %}
@@ -842,18 +842,24 @@
 
                 // 24h Vote Counter für das Profil aktualisieren
                 const userVoteCounter = document.getElementById('userVoteCounter');
+                const recentVoteContainer = document.getElementById('recentVoteContainer');
                 userVoteCounter.innerHTML = '';
-                if (person.recent_ups > 0) {
-                    const upSpan = document.createElement('span');
-                    upSpan.className = 'vote-count-up';
-                    upSpan.innerHTML = `<i class="fa-solid fa-caret-up"></i> ${person.recent_ups} Upvotes`;
-                    userVoteCounter.appendChild(upSpan);
-                }
-                if (person.recent_downs > 0) {
-                    const downSpan = document.createElement('span');
-                    downSpan.className = 'vote-count-down';
-                    downSpan.innerHTML = `<i class="fa-solid fa-caret-down"></i> ${person.recent_downs} Downvotes`;
-                    userVoteCounter.appendChild(downSpan);
+                if (person.recent_ups > 0 || person.recent_downs > 0) {
+                    recentVoteContainer.style.display = 'flex';
+                    if (person.recent_ups > 0) {
+                        const upSpan = document.createElement('span');
+                        upSpan.className = 'vote-count-up';
+                        upSpan.innerHTML = `<i class="fa-solid fa-caret-up"></i> ${person.recent_ups} Upvotes`;
+                        userVoteCounter.appendChild(upSpan);
+                    }
+                    if (person.recent_downs > 0) {
+                        const downSpan = document.createElement('span');
+                        downSpan.className = 'vote-count-down';
+                        downSpan.innerHTML = `<i class="fa-solid fa-caret-down"></i> ${person.recent_downs} Downvotes`;
+                        userVoteCounter.appendChild(downSpan);
+                    }
+                } else {
+                    recentVoteContainer.style.display = 'none';
                 }
 
                 buttonPlusDisabled = true;
