@@ -524,6 +524,25 @@
                 {% endif %}
             </div>
         </div>
+
+        {% if logged_in_user == 'admin' %}
+            <div class="card admin-user-card" style="margin-top: 24px; background: rgba(0,0,0,0.05); border: 1px dashed var(--muted);">
+                <h2><i class="fa-solid fa-user-gear"></i> Benutzerverwaltung (Admin)</h2>
+                <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+                    <div style="flex: 1; min-width: 200px;">
+                        <label for="newUserName" style="display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px;">Name</label>
+                        <input type="text" id="newUserName" placeholder="Name" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); color: #1f2937;">
+                    </div>
+                    <div style="flex: 1; min-width: 200px;">
+                        <label for="newUserPassword" style="display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px;">Passwort</label>
+                        <input type="text" id="newUserPassword" placeholder="Passwort" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); color: #1f2937;">
+                    </div>
+                    <div style="padding-top: 20px;">
+                        <button class="btn btn-send" onclick="addUser()" style="white-space: nowrap;">Benutzer hinzufügen</button>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
     </div>
 </div>
 
@@ -814,6 +833,21 @@
             // Name-Zelle
             const tdName = document.createElement('td');
             tdName.textContent = person.name;
+            if ('{{ logged_in_user }}' === 'admin' && person.name !== 'admin') {
+                const delBtn = document.createElement('button');
+                delBtn.className = 'btn btn-cancel';
+                delBtn.style.padding = '2px 8px';
+                delBtn.style.fontSize = '14px';
+                delBtn.style.marginLeft = '10px';
+                delBtn.style.verticalAlign = 'middle';
+                delBtn.title = "Benutzer löschen";
+                delBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+                delBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    deleteUser(person.id, person.name);
+                };
+                tdName.appendChild(delBtn);
+            }
 
             // Score-Zelle
             const tdScore = document.createElement('td');
@@ -1261,6 +1295,58 @@
         await initialLoad();
         pollLoop();
     })();
+
+    async function addUser() {
+        const nameInput = document.getElementById('newUserName');
+        const passInput = document.getElementById('newUserPassword');
+        const name = nameInput.value.trim();
+        const password = passInput.value.trim();
+
+        if (!name || !password) {
+            showToast("Bitte Name und Passwort eingeben.");
+            return;
+        }
+
+        try {
+            const body = new URLSearchParams();
+            body.append("name", name);
+            body.append("password", password);
+
+            const response = await fetch('/api/admin/users/add', { method: 'POST', body: body });
+            const data = await response.json();
+
+            if (response.ok) {
+                showToast(`Benutzer ${name} erfolgreich hinzugefügt.`);
+                nameInput.value = '';
+                passInput.value = '';
+            } else {
+                showToast("Fehler: " + (data.error || "Unbekannter Fehler"));
+            }
+        } catch (e) {
+            console.error(e);
+            showToast("Netzwerkfehler beim Hinzufügen des Benutzers.");
+        }
+    }
+
+    async function deleteUser(id, name) {
+        if (!confirm(`Möchtest du den Benutzer "${name}" wirklich löschen? Alle zugehörigen Daten gehen verloren.`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
+            const data = await response.json();
+
+            if (response.ok) {
+                showToast(`Benutzer ${name} gelöscht.`);
+            } else {
+                showToast("Fehler beim Löschen: " + (data.error || "Unbekannter Fehler"));
+            }
+        } catch (e) {
+            console.error(e);
+            showToast("Netzwerkfehler beim Löschen des Benutzers.");
+        }
+    }
 
     // Alles was mit dem Comment-Fenster zu tun hat ist hier
     const modal = document.getElementById('inputModal');

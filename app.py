@@ -78,17 +78,6 @@ VOTE_COOLDOWN_HOURS = timedelta(hours=12)
 MAX_SIZE_VOTE_LOG = 15
 
 USERS = {
-    "Annika": {"display_name": "Annika", "password": "latein"},
-    "Jonas": {"display_name": "Jonas", "password": "pazifik"},
-    "Tesniem": {"display_name": "Tesniem", "password": "paradies"},
-    "Nele": {"display_name": "Nele", "password": "biologie"},
-    "Nelly": {"display_name": "Nelly", "password": "stern"},
-    "Anna-Lena": {"display_name": "Anna-Lena", "password": "ozean"},
-    "Levin": {"display_name": "Levin", "password": "informatik"},
-    "Fynn": {"display_name": "Fynn", "password": "spitze"},
-    "Sadiyah": {"display_name": "Sadiyah", "password": "sprache"},
-    "Jan-Luca": {"display_name": "Jan-Luca", "password": "wald"},
-    "Samuel": {"display_name": "Samuel", "password": "blitz"},
     "admin": {"display_name": "Admin", "password": "speck"},
 }
 
@@ -152,17 +141,17 @@ def load_current_state() -> Any:
             data = {
                 "version": 0,
                 "persons": [
-                    {"id": 1, "name": "Annika", "photo": None, "score": STARTING_SCORE},
-                    {"id": 2, "name": "Jonas", "photo": None, "score": STARTING_SCORE},
-                    {"id": 3, "name": "Tesniem", "photo": None, "score": STARTING_SCORE},
-                    {"id": 4, "name": "Nele", "photo": None, "score": STARTING_SCORE},
-                    {"id": 5, "name": "Nelly", "photo": None, "score": STARTING_SCORE},
-                    {"id": 6, "name": "Anna-Lena", "photo": None, "score": STARTING_SCORE},
-                    {"id": 7, "name": "Levin", "photo": None, "score": STARTING_SCORE},
-                    {"id": 8, "name": "Fynn", "photo": None, "score": STARTING_SCORE},
-                    {"id": 9, "name": "Sadiyah", "photo": None, "score": STARTING_SCORE},
-                    {"id": 10, "name": "Jan-Luca", "photo": None, "score": STARTING_SCORE},
-                    {"id": 11, "name": "Samuel", "photo": None, "score": STARTING_SCORE},
+                    {"id": 1, "name": "Annika", "password": "latein", "photo": None, "score": STARTING_SCORE},
+                    {"id": 2, "name": "Jonas", "password": "pazifik", "photo": None, "score": STARTING_SCORE},
+                    {"id": 3, "name": "Tesniem", "password": "paradies", "photo": None, "score": STARTING_SCORE},
+                    {"id": 4, "name": "Nele", "password": "biologie", "photo": None, "score": STARTING_SCORE},
+                    {"id": 5, "name": "Nelly", "password": "stern", "photo": None, "score": STARTING_SCORE},
+                    {"id": 6, "name": "Anna-Lena", "password": "ozean", "photo": None, "score": STARTING_SCORE},
+                    {"id": 7, "name": "Levin", "password": "informatik", "photo": None, "score": STARTING_SCORE},
+                    {"id": 8, "name": "Fynn", "password": "spitze", "photo": None, "score": STARTING_SCORE},
+                    {"id": 9, "name": "Sadiyah", "password": "sprache", "photo": None, "score": STARTING_SCORE},
+                    {"id": 10, "name": "Jan-Luca", "password": "wald", "photo": None, "score": STARTING_SCORE},
+                    {"id": 11, "name": "Samuel", "password": "blitz", "photo": None, "score": STARTING_SCORE},
                 ],
                 "vote_log": {}
             }
@@ -307,7 +296,12 @@ def bump_version() -> bool:
 
 def current_user() -> Any | None:
     user = session.get("user")
-    return user if user in USERS else None
+    if user == "admin":
+        return "admin"
+    # Prüfen, ob der User in den Personen existiert
+    if any(p["name"] == user for p in current_state["persons"]):
+        return user
+    return None
 
 def ensure_logged_in_api() -> tuple[Response, int] | None:
     if not current_user():
@@ -324,9 +318,18 @@ def render_login() -> str | Response:
     if request.method == "POST":
         username = (request.form.get("username") or "").strip()
         password = (request.form.get("password") or "").strip()
-        # Demo-Check: Passwort == Benutzername
-        if username in USERS and password == USERS[username]["password"]:
-            session.permanent = True  # Session-Cookie wird "permanent" (Ablauf lt. app.permanent_session_lifetime)
+        
+        # Check Admin
+        if username == "admin" and password == USERS["admin"]["password"]:
+            session.permanent = True
+            session["user"] = "admin"
+            nxt = request.args.get("next")
+            return redirect(nxt or url_for("render_index"))
+        
+        # Check reguläre User in current_state
+        user_found = next((p for p in current_state["persons"] if p["name"] == username), None)
+        if user_found and user_found.get("password") == password:
+            session.permanent = True
             session["user"] = username
             nxt = request.args.get("next")
             return redirect(nxt or url_for("render_index"))
@@ -366,7 +369,7 @@ def render_index() -> Response | str:
     
     return render_template("index.html",
                            logged_in_user=user,
-                           display_name=USERS[user]["display_name"],
+                           display_name="Admin" if user == "admin" else user,
                            user_score=user_score,
                            user_ranking_category=user_ranking_category,
                            recent_ups=recent_ups,
@@ -505,6 +508,15 @@ def get_recent_vote_counts(person_id: int):
                 continue
     return ups, downs
 
+def get_safe_persons():
+    global current_state
+    safe_persons = []
+    for p in current_state["persons"]:
+        cp = p.copy()
+        cp.pop("password", None)
+        safe_persons.append(cp)
+    return safe_persons
+
 @app.route("/api/persons", methods=["GET"])
 def get_persons() -> tuple[Response, int] | Response:
     global current_state
@@ -532,7 +544,7 @@ def get_persons() -> tuple[Response, int] | Response:
         else:
             logs = get_structured_vote_log(current_state["vote_log"].get(str(own_id), {}))
 
-        return jsonify({"version": update_version, "persons": current_state["persons"], "plusCooldowns": plus_cooldowns,
+        return jsonify({"version": update_version, "persons": get_safe_persons(), "plusCooldowns": plus_cooldowns,
                         "minusCooldowns": minus_cooldowns,
                         "own_vote_log": logs})
 
@@ -789,10 +801,54 @@ def long_poll_updates() -> tuple[Response, int] | Response:
         else:
             logs = get_structured_vote_log(current_state["vote_log"].get(str(own_id), {}))
 
-        return jsonify({"changed": changed, "version": update_version, "persons": current_state["persons"],
+        return jsonify({"changed": changed, "version": update_version, "persons": get_safe_persons(),
                         "plusCooldowns": plus_cooldowns, "minusCooldowns": minus_cooldowns,
                         "own_vote_log": logs}), 200
 
+@app.route("/api/admin/users/add", methods=["POST"])
+def add_user():
+    if current_user() != "admin":
+        return jsonify({"error": "Nicht autorisiert"}), 403
+    
+    name = (request.form.get("name") or "").strip()
+    password = (request.form.get("password") or "").strip()
+    
+    if not name or not password:
+        return jsonify({"error": "Name und Passwort erforderlich"}), 400
+    
+    with state_lock:
+        if any(p["name"] == name for p in current_state["persons"]):
+            return jsonify({"error": "Benutzer existiert bereits"}), 400
+        
+        new_id = max((p["id"] for p in current_state["persons"]), default=0) + 1
+        new_person = {
+            "id": new_id,
+            "name": name,
+            "password": password,
+            "photo": None,
+            "score": STARTING_SCORE
+        }
+        current_state["persons"].append(new_person)
+        if not bump_version():
+            return jsonify({"error": "Fehler beim Speichern"}), 500
+            
+    return jsonify({"success": True, "person": {"id": new_id, "name": name, "score": STARTING_SCORE}})
+
+@app.route("/api/admin/users/<int:person_id>", methods=["DELETE"])
+def delete_user(person_id):
+    if current_user() != "admin":
+        return jsonify({"error": "Nicht autorisiert"}), 403
+    
+    with state_lock:
+        person = next((p for p in current_state["persons"] if p["id"] == person_id), None)
+        if not person:
+            return jsonify({"error": "Benutzer nicht gefunden"}), 404
+        
+        current_state["persons"] = [p for p in current_state["persons"] if p["id"] != person_id]
+        if not bump_version():
+            return jsonify({"error": "Fehler beim Speichern"}), 500
+            
+    return jsonify({"success": True})
 
 @app.route("/api/admin/diary/pdf", methods=["GET"])
 def download_diary_pdf():
