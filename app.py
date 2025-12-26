@@ -11,8 +11,7 @@ from flask import Flask, jsonify, request, render_template, session, redirect, \
     url_for, Response
 from werkzeug import Response
 
-# TODO auf FAST API umstellen
-
+# Framework configuration
 app = Flask(__name__)
 
 @app.template_filter('initials')
@@ -36,17 +35,14 @@ app.config.update(
 FILENAME = 'score.json'
 DIARY_FILENAME = 'diary.json'
 
-# TODO add same for diary
-# test
-
 GIST_HEADERS = {
     "Authorization": f"Bearer {os.environ.get('GITHUB_TOKEN')}",
     "Accept": "application/vnd.github.v3+json",
     "X-GitHub-Api-Version": "2022-11-28"
 }
 
-STARTING_SCORE = 4.0
-VOTE_WEIGHT_MODIFIER = 1 #TODO halbieren?
+STARTING_SCORE = 3.0
+VOTE_WEIGHT_MODIFIER = 0.5
 VOTE_WEIGHT_ADMIN = 0.2
 DEFAULT_VOTE_WEIGHT = 0.1
 RANKING_PERCENTAGES = {
@@ -137,8 +133,7 @@ def get_diary_data():
         print("Fehler beim Laden des Tagebuchs:", response.text)
         return None
 
-# TODO requests verhindern durch caching, sonst vielleicht Probleme mit GIT-TOKEN RATE LIMIT?!
-
+# State configuration
 def load_current_state() -> Any:
     global update_version
 
@@ -272,18 +267,20 @@ def get_sorted_scorelist():
 
     return sorted(current_state["persons"], key = lambda person: person["score"], reverse = True)
 
-def add_privileges_to_state(state):
+def add_ranking_category_to_state(state):
     sorted_list = sorted(state["persons"], key=lambda p: p["score"], reverse=True)
     
-    # Vorher Kategorien für alle bestimmen, um nicht in jeder Iteration neu zu sortieren
+    # Kategorien für alle bestimmen
     for person in state["persons"]:
         category = get_ranking_category(person, sorted_list)
+        person["ranking_category"] = category
         person["privileges"] = get_privileges(person, category)
 
     return state
 
-def remove_privileges_from_state(state):
+def remove_ranking_category_from_state(state):
     for person in state["persons"]:
+        person.pop("ranking_category", None)
         person.pop("privileges", None)
 
 def bump_version() -> bool:
@@ -294,12 +291,12 @@ def bump_version() -> bool:
     update_version += 1
     current_state["version"] = update_version
     cut_vote_log()
-    remove_privileges_from_state(current_state)
+    remove_ranking_category_from_state(current_state)
 
     success = save_state(current_state)
     
     # Privilegien wieder hinzufügen für die Anzeige
-    add_privileges_to_state(current_state)
+    add_ranking_category_to_state(current_state)
     
     if success:
         version_condition.notify_all()
@@ -357,14 +354,19 @@ def render_index() -> Response | str:
     recent_ups = 0
     recent_downs = 0
     photo = None
+    user_ranking_category = 11 # Default
     if person and person.get("id"):
         recent_ups, recent_downs = get_recent_vote_counts(person["id"])
         photo = person.get("photo")
+        # Ranking Kategorie ermitteln
+        sorted_list = get_sorted_scorelist()
+        user_ranking_category = get_ranking_category(person, sorted_list) or 11
     
     return render_template("index.html",
                            logged_in_user=user,
                            display_name=USERS[user]["display_name"],
                            user_score=user_score,
+                           user_ranking_category=user_ranking_category,
                            recent_ups=recent_ups,
                            recent_downs=recent_downs,
                            photo=photo)
@@ -514,7 +516,7 @@ def get_persons() -> tuple[Response, int] | Response:
     plus_cooldowns = cooldowns[0]
     minus_cooldowns = cooldowns[1]
 
-    add_privileges_to_state(current_state)
+    add_ranking_category_to_state(current_state)
 
     # Füge 24h Vote Counts hinzu
     for person in current_state["persons"]:
@@ -713,7 +715,12 @@ def add_diary_entry():
         return jsonify({}), 401
 
     user_name = current_user()
-    text = request.form.get("text")
+    text = (request.form.get("text") or "").strip()
+    if not text:
+        return jsonify({"error": "Tagebucheintrag darf nicht leer sein"}), 400
+    if len(text) > 500:
+        return jsonify({"error": "Tagebucheintrag ist zu lang (max. 500 Zeichen)"}), 400
+
     timestamp = convert_to_iso_zulu(get_utc_now())
 
     with diary_lock:
@@ -722,7 +729,10 @@ def add_diary_entry():
         if diary_data is None:
             return jsonify({"error": "Fehler - Tagebuch auf Server nicht gefunden"}), 404
 
-        diary_data.update({"name": user_name, "timestamp": timestamp, "text": text})
+        if not isinstance(diary_data, list):
+            diary_data = []
+
+        diary_data.append({"name": user_name, "timestamp": timestamp, "text": text})
 
         payload = {
             "files": {
@@ -731,13 +741,13 @@ def add_diary_entry():
                 }
             }
         }
-        response = requests.patch(f"https://api.github.com/gists/{os.environ.get("DIARY")}",
+        response = requests.patch(f"https://api.github.com/gists/{os.environ.get('DIARY')}",
                                   headers=GIST_HEADERS,
                                   json=payload)
         if response.status_code != 200:
             return jsonify({"error": f"Fehler beim Speichern des Tagebuches: {response.text}"}), 409
         else:
-            return jsonify({"success": True}, 200)
+            return jsonify({"success": True}), 200
 
 @app.route("/api/updates", methods=["GET"])
 def long_poll_updates() -> tuple[Response, int] | Response:
@@ -764,7 +774,7 @@ def long_poll_updates() -> tuple[Response, int] | Response:
         plus_cooldowns = cooldowns[0]
         minus_cooldowns = cooldowns[1]
 
-        add_privileges_to_state(current_state)
+        add_ranking_category_to_state(current_state)
 
         # Füge 24h Vote Counts hinzu
         for person in current_state["persons"]:
@@ -782,9 +792,8 @@ def long_poll_updates() -> tuple[Response, int] | Response:
                         "own_vote_log": logs}), 200
 
 
-######### Globaler Zustand im Speicher
+# Globaler Zustand im Speicher
 current_state = load_current_state()
-#########
 
 if __name__ == "__main__":
     # Debug nur lokal; für Produktion WSGI-Server nutzen

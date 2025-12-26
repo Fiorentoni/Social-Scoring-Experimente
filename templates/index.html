@@ -460,6 +460,21 @@
             <span style="font-size: 30px; font-weight: bold;" id="userName">{{ display_name }}</span>
             <div class="profile-score-container">
                 <span style="font-size: 40px; font-weight: bold" id="userScore">{% if user_score == 0 %}{% else %}{{ user_score }}{% endif %}</span>
+                <div id="userScoreIcon" style="font-size: 30px; margin-left: 10px;">
+                    {% if user_ranking_category == 1 %}
+                        <i class="fa-solid fa-crown" style="color: gold;"></i>
+                    {% elif user_ranking_category <= 3 %}
+                        <i class="fa-solid fa-star" style="color: gold;"></i>
+                    {% elif user_ranking_category <= 5 %}
+                        <i class="fa-solid fa-face-smile" style="color: #00bd21;"></i>
+                    {% elif user_ranking_category <= 7 %}
+                        <i class="fa-solid fa-face-meh" style="color: orange;"></i>
+                    {% elif user_ranking_category <= 10 %}
+                        <i class="fa-solid fa-face-frown" style="color: #ef4444;"></i>
+                    {% else %}
+                        <i class="fa-solid fa-face-sad-cry" style="color: #5e636e;"></i>
+                    {% endif %}
+                </div>
                 <div id="recentVoteContainer" style="display: {% if recent_ups > 0 or recent_downs > 0 %}flex{% else %}none{% endif %}; flex-direction: column;">
                     <span class="vote-hint">Letzte 24h</span>
                     <div id="userVoteCounter" class="profile-vote-counter">
@@ -495,8 +510,7 @@
         </table>
         <p class="footer-note">Hinweis: Die Liste wird live aktualisiert.</p>
         <div class="diary-container">
-            <h2><i class="fa-solid fa-pen"></i> Eintrag ins Experiment-Tagebuch</h2>
-{#            TODO Add diary icon & score icons#}
+            <h2><i class="fa-solid fa-book"></i> Eintrag ins Experiment-Tagebuch</h2>
             <textarea id="diaryEntry"  maxlength="500" rows="3" placeholder="Heutige Eindrücke, Gefühle, Gedanken zum Experiment"></textarea>
             <p class="diary-hint">Bitte keine persönlichen Daten eingeben.</p>
             <div class="comment-actions">
@@ -798,7 +812,18 @@
             const tdScore = document.createElement('td');
             const scoreSpan = document.createElement('span');
             scoreSpan.className = 'score';
-            scoreSpan.textContent = Number(person.score).toFixed(2);
+            
+            // Icon basierend auf Ranking-Kategorie hinzufügen
+            let scoreIcon = '';
+            const cat = person.ranking_category;
+            if (cat === 1) scoreIcon = '<i class="fa-solid fa-crown" style="color: gold; margin-right: 4px;"></i>';
+            else if (cat <= 3) scoreIcon = '<i class="fa-solid fa-star" style="color: gold; margin-right: 4px;"></i>';
+            else if (cat <= 5) scoreIcon = '<i class="fa-solid fa-face-smile" style="color: #00bd21; margin-right: 4px;"></i>';
+            else if (cat <= 7) scoreIcon = '<i class="fa-solid fa-face-meh" style="color: orange; margin-right: 4px;"></i>';
+            else if (cat <= 10) scoreIcon = '<i class="fa-solid fa-face-frown" style="color: #ef4444; margin-right: 4px;"></i>';
+            else scoreIcon = '<i class="fa-solid fa-face-sad-cry" style="color: #5e636e; margin-right: 4px;"></i>';
+
+            scoreSpan.innerHTML = scoreIcon + Number(person.score).toFixed(2);
             tdScore.appendChild(scoreSpan);
 
             // Gesperrte Buttons finden und ausgrauen
@@ -839,6 +864,16 @@
                 }
                 lastOwnScore = newScore;
                 ownScore.textContent = person.score;
+
+                // User Score Icon aktualisieren
+                const userScoreIcon = document.getElementById('userScoreIcon');
+                const ownCat = person.ranking_category;
+                if (ownCat === 1) userScoreIcon.innerHTML = '<i class="fa-solid fa-crown" style="color: gold;"></i>';
+                else if (ownCat <= 3) userScoreIcon.innerHTML = '<i class="fa-solid fa-star" style="color: gold;"></i>';
+                else if (ownCat <= 5) userScoreIcon.innerHTML = '<i class="fa-solid fa-face-smile" style="color: #00bd21;"></i>';
+                else if (ownCat <= 7) userScoreIcon.innerHTML = '<i class="fa-solid fa-face-meh" style="color: orange;"></i>';
+                else if (ownCat <= 10) userScoreIcon.innerHTML = '<i class="fa-solid fa-face-frown" style="color: #ef4444;"></i>';
+                else userScoreIcon.innerHTML = '<i class="fa-solid fa-face-sad-cry" style="color: #5e636e;"></i>';
 
                 // 24h Vote Counter für das Profil aktualisieren
                 const userVoteCounter = document.getElementById('userVoteCounter');
@@ -1147,20 +1182,39 @@
     }
 
     async function sendDiaryEntry() {
+        const sendBtn = document.getElementById('sendDiaryBtn');
         const textarea = document.getElementById('diaryEntry');
         const text = textarea.value.trim();
-        const body = new URLSearchParams();
-        body.append("text", text);
 
-        const response = await fetch('/api/diary', { method: 'POST', body: body });
-        if (response.status === 401) { window.location.href = '/login'; return; }
+        if (!text) return;
 
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) {
-            showToast(data.error || "Fehler beim Verarbeiten des Tagebucheintrags."); return; }
+        // Button deaktivieren und Spinner-Zustand (optional, hier einfach Textänderung)
+        const originalText = sendBtn.textContent;
+        sendBtn.disabled = true;
+        sendBtn.textContent = 'Wird gesendet...';
 
-        textarea.value = '';
-        showToast("Eintrag erfolgreich gespeichert.");
+        try {
+            const body = new URLSearchParams();
+            body.append("text", text);
+
+            const response = await fetch('/api/diary', { method: 'POST', body: body });
+            if (response.status === 401) { window.location.href = '/login'; return; }
+
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                showToast(data.error || "Fehler beim Verarbeiten des Tagebucheintrags.");
+                return;
+            }
+
+            textarea.value = '';
+            showToast("Eintrag erfolgreich gespeichert.");
+        } catch (e) {
+            console.error('Diary-Fehler', e);
+            showToast("Netzwerkfehler: Eintrag nicht gesendet.");
+        } finally {
+            sendBtn.disabled = false;
+            sendBtn.textContent = originalText;
+        }
     }
 
     let pollErrorCount = 0;
