@@ -1,0 +1,22 @@
+services:
+  highscore-gruppe1:
+    build: .
+    ports:
+      - "5001:5000"
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - GIST_ID=${GIST_ID}
+      - DIARY=${DIARY}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+    restart: always
+
+  highscore-gruppe2:
+    build: .
+    ports:
+      - "5002:5000"
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - GIST_ID=${GIST_ID}
+      - DIARY=${DIARY}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+    restart: always

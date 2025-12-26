@@ -77,8 +77,11 @@ VOTE_COOLDOWN_HOURS = timedelta(hours=12)
 
 MAX_SIZE_VOTE_LOG = 15
 
+# Globaler Admin-User (Passwort aus Umgebungsvariable oder Default)
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "speck")
+
 USERS = {
-    "admin": {"display_name": "Admin", "password": "speck"},
+    "admin": {"display_name": "Admin", "password": ADMIN_PASSWORD},
 }
 
 # Gemeinsamer Zustand + Synchronisation für Long-Polling
@@ -136,27 +139,27 @@ def load_current_state() -> Any:
         # der NICHT das Gist überschreibt.
         raise SystemExit("App konnte Daten nicht laden und wird beendet, um Datenverlust zu vermeiden.")
 
-    with gist_lock:
-        if not data:
-            data = {
-                "version": 0,
-                "persons": [
-                    {"id": 1, "name": "Annika", "password": "latein", "photo": None, "score": STARTING_SCORE},
-                    {"id": 2, "name": "Jonas", "password": "pazifik", "photo": None, "score": STARTING_SCORE},
-                    {"id": 3, "name": "Tesniem", "password": "paradies", "photo": None, "score": STARTING_SCORE},
-                    {"id": 4, "name": "Nele", "password": "biologie", "photo": None, "score": STARTING_SCORE},
-                    {"id": 5, "name": "Nelly", "password": "stern", "photo": None, "score": STARTING_SCORE},
-                    {"id": 6, "name": "Anna-Lena", "password": "ozean", "photo": None, "score": STARTING_SCORE},
-                    {"id": 7, "name": "Levin", "password": "informatik", "photo": None, "score": STARTING_SCORE},
-                    {"id": 8, "name": "Fynn", "password": "spitze", "photo": None, "score": STARTING_SCORE},
-                    {"id": 9, "name": "Sadiyah", "password": "sprache", "photo": None, "score": STARTING_SCORE},
-                    {"id": 10, "name": "Jan-Luca", "password": "wald", "photo": None, "score": STARTING_SCORE},
-                    {"id": 11, "name": "Samuel", "password": "blitz", "photo": None, "score": STARTING_SCORE},
-                ],
-                "vote_log": {}
-            }
-
-            update_gist_data(data)
+    # with gist_lock:
+    #     if not data:
+    #         data = {
+    #             "version": 0,
+    #             "persons": [
+    #                 {"id": 1, "name": "Annika", "password": "latein", "photo": None, "score": STARTING_SCORE},
+    #                 {"id": 2, "name": "Jonas", "password": "pazifik", "photo": None, "score": STARTING_SCORE},
+    #                 {"id": 3, "name": "Tesniem", "password": "paradies", "photo": None, "score": STARTING_SCORE},
+    #                 {"id": 4, "name": "Nele", "password": "biologie", "photo": None, "score": STARTING_SCORE},
+    #                 {"id": 5, "name": "Nelly", "password": "stern", "photo": None, "score": STARTING_SCORE},
+    #                 {"id": 6, "name": "Anna-Lena", "password": "ozean", "photo": None, "score": STARTING_SCORE},
+    #                 {"id": 7, "name": "Levin", "password": "informatik", "photo": None, "score": STARTING_SCORE},
+    #                 {"id": 8, "name": "Fynn", "password": "spitze", "photo": None, "score": STARTING_SCORE},
+    #                 {"id": 9, "name": "Sadiyah", "password": "sprache", "photo": None, "score": STARTING_SCORE},
+    #                 {"id": 10, "name": "Jan-Luca", "password": "wald", "photo": None, "score": STARTING_SCORE},
+    #                 {"id": 11, "name": "Samuel", "password": "blitz", "photo": None, "score": STARTING_SCORE},
+    #             ],
+    #             "vote_log": {}
+    #         }
+    #
+    #         update_gist_data(data)
 
     update_version = data.get("version", 0)
 
