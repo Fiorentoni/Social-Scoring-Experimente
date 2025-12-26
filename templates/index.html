@@ -525,7 +525,7 @@
                 </div>
             </div>
             <div id="votesContainer"></div>
-            <button class="btn btn-send" id="moreVotesButton" onclick="showNextVotes()">Noch X weitere Kommentare (max. 15)</button>
+            <button class="btn btn-send" id="moreVotesButton" onclick="showNextVotes()">Noch X weitere Kommentare (max. 30)</button>
             <p></p>
             <button class="btn btn-cancel" id="logoutButton" onclick="location.href='/logout';">Logout</button>
         </div>
@@ -1192,13 +1192,16 @@
     }
 
     function renderVoteLog(voteLog, level) {
-        const slicedVoteLog = voteLog.slice(0, 15);
+        const slicedVoteLog = voteLog.slice(0, 30);
         const length = slicedVoteLog.length;
         let startIndex;
         let lastIndex;
         if (level === 1) startIndex = 0;
         else if (level === 2 && length > 5) startIndex = 5;
         else if (level === 3 && length > 10) startIndex = 10;
+        else if (level === 4 && length > 15) startIndex = 15;
+        else if (level === 5 && length > 20) startIndex = 20;
+        else if (level === 6 && length > 25) startIndex = 25;
         else return false;
 
         let totalHtml = '<ul class="votelist">'
@@ -1248,11 +1251,11 @@
         if (button !== null) {
             if (remainingVotes === 1) {
                 button.style.display = 'block';
-                button.textContent = `Noch ein weiterer Kommentar (max. 15 gespeichert)`;
+                button.textContent = `Noch ein weiterer Kommentar (max. 30 gespeichert)`;
             }
             else if (remainingVotes > 0) {
                 button.style.display = 'block';
-                button.textContent = `Noch ${remainingVotes} weitere Kommentare (max. 15 gespeichert)`;
+                button.textContent = `Noch ${remainingVotes} weitere Kommentare (max. 30 gespeichert)`;
             }
             else {
                 if (level === 1) button.style.display = 'none';
@@ -1270,7 +1273,7 @@
     }
 
     function showNextVotes() {
-        if (voteLevel < 3) {
+        if (voteLevel < 6) {
             voteLevel++;
         }
         else {

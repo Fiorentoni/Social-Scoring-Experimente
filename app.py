@@ -75,7 +75,7 @@ VOTE_WEIGHTS = {
 }
 VOTE_COOLDOWN_HOURS = timedelta(hours=12)
 
-MAX_SIZE_VOTE_LOG = 15
+MAX_SIZE_VOTE_LOG = 30
 
 # Globaler Admin-User (Passwort aus Umgebungsvariable oder Default)
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "speck")
@@ -464,7 +464,7 @@ def cut_vote_log():
         # Nach Zeit sortieren
         flat_list.sort(key=lambda x: x["timestamp"], reverse=True)
 
-        # Auf die 15 neuesten Einträge kürzen
+        # Auf die 30 neuesten Einträge kürzen
         kept_entries = flat_list[:MAX_SIZE_VOTE_LOG]
 
         # Das Dictionary für diese Person neu aufbauen
