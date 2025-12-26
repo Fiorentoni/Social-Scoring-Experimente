@@ -452,10 +452,10 @@ def cut_vote_log():
                     "timestamp": vote_log[person][votedBy][vote]["timestamp"],
                     "comment": vote_log[person][votedBy][vote]["comment"]
                 }
-                # Votes, deren Cooldown abgelaufen ist und die keinen Kommentar haben, kann man weglassen
+                # Votes, deren 24h abgelaufen sind und die keinen Kommentar haben, kann man weglassen
                 timestamp_dt = convert_from_iso_zulu(flat_entry["timestamp"])
                 delta = get_utc_now() - timestamp_dt
-                if flat_entry["comment"] != "null" or delta <= VOTE_COOLDOWN_HOURS:
+                if flat_entry["comment"] != "null" or delta <= VOTE_COOLDOWN_HOURS * 2:
                     flat_list.append(flat_entry)
 
         # Nach Zeit sortieren
