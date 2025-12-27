@@ -278,6 +278,7 @@
             padding-top: 0;
             padding-bottom: 0;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); /* Subtiler Schatten für Tiefe */
+            pointer-events: none; /* Verhindert Flackern durch Überlappung */
         }
         /* Pseudo-Element für den kleinen Pfeil nach unten */
         .privileges::after {
@@ -288,6 +289,7 @@
             border-width: 12px;
             border-style: solid;
             border-color: transparent transparent transparent var(--bg); /* Erstellt ein Dreieck, das nach unten zeigt */
+            pointer-events: none;
         }
         #votesContainer {
            width: 100%;
@@ -360,13 +362,14 @@
             }
             .privileges {
                 left: 50%;
-                top: 100%;
+                top: 110%;
                 transform: translateX(-50%);
             }
             .privileges::after {
-                top: -12px;
+                top: -24px;
                 left: 50%;
                 transform: translateX(-50%);
+                border-width: 12px;
                 border-color: transparent transparent var(--bg) transparent;
             }
         }
@@ -1654,6 +1657,35 @@
                 privileges.style.visibility = 'hidden';
                 privileges.style.opacity = '0';
             }
+        }
+    });
+
+    // Für Touch-Geräte: Umschalten bei Klick
+    document.addEventListener('click', function(e) {
+        const infoIcon = e.target.closest('.infoTooltip');
+        if (infoIcon) {
+            const privileges = infoIcon.closest('tr').querySelector('.privileges');
+            if (privileges) {
+                const isVisible = privileges.style.visibility === 'visible';
+                
+                // Zuerst alle anderen Tooltips schließen
+                document.querySelectorAll('.privileges').forEach(p => {
+                    p.style.visibility = 'hidden';
+                    p.style.opacity = '0';
+                });
+
+                if (!isVisible) {
+                    privileges.style.visibility = 'visible';
+                    privileges.style.opacity = '1';
+                }
+                e.stopPropagation();
+            }
+        } else {
+            // Klick irgendwo anders schließt alle Tooltips
+            document.querySelectorAll('.privileges').forEach(p => {
+                p.style.visibility = 'hidden';
+                p.style.opacity = '0';
+            });
         }
     });
 
