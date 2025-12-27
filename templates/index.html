@@ -102,7 +102,7 @@
             border: 1px solid var(--border); border-radius: 8px; background: #fafafa;
         }
         h2 { margin: 0 0 12px 0; font-size: 18px; }
-        table { width: 100%; border-collapse: collapse; }
+        table { border-collapse: collapse; }
         thead th {
             text-align: left; font-weight: 600; font-size: 14px; color: var(--muted);
             padding: 10px 12px; border-bottom: 1px solid var(--border);
@@ -111,7 +111,7 @@
             padding: 10px; border-bottom: 1px solid var(--border); vertical-align: middle;
         }
         .row {
-            display: grid; grid-template-columns: 50px 72px 300px 120px 220px; align-items: center; font-size: 30px; position: relative;
+            display: grid; grid-template-columns: 50px 72px 1fr auto auto; align-items: center; font-size: 30px; position: relative; gap: 10px;
         }
         .person-avatar {
             width: 39px; height: 39px; border-radius: 50%; background: #dbeafe;
@@ -336,7 +336,9 @@
                 grid-template-columns: 40px 50px 1fr 60px; 
                 font-size: 18px; 
                 gap: 8px;
+                overflow: hidden;
             }
+            .row > *:nth-child(5) { display: none; } /* Die 5. Spalte (Zeitraum/Details) auf Mobile ausblenden */
             .person-avatar { width: 32px; height: 32px; }
             .btn { padding: 6px 12px; font-size: 14px; margin: 2px; }
             .actions { 
@@ -640,23 +642,25 @@
     const personsBody = document.getElementById('personsBody');
     const upvoteSound = new Audio('/static/upvote.mp3');
     const downvoteSound = new Audio('/static/downvote.mp3');
+    const sendSound = new Audio('/static/send.mp3');
+    const rateSound = new Audio('/static/rate.mp3');
 
     // Browser blockieren Audio-Autoplay oft, bis eine Benutzerinteraktion stattfindet.
     // Wir entsperren den Audio-Kontext beim ersten Klick auf die Seite.
     function unlockAudio() {
-        upvoteSound.play().then(() => {
-            upvoteSound.pause();
-            upvoteSound.currentTime = 0;
-        }).catch(e => console.warn("Audio unlock failed for upvoteSound:", e));
-
-        downvoteSound.play().then(() => {
-            downvoteSound.pause();
-            downvoteSound.currentTime = 0;
-        }).catch(e => console.warn("Audio unlock failed for downvoteSound:", e));
+        [upvoteSound, downvoteSound, sendSound, rateSound].forEach(sound => {
+            const wasMuted = sound.muted;
+            sound.muted = true;
+            sound.play().then(() => {
+                sound.pause();
+                sound.currentTime = 0;
+                sound.muted = wasMuted;
+            }).catch(e => console.warn("Audio unlock failed:", e));
+        });
 
         document.removeEventListener('click', unlockAudio);
         document.removeEventListener('touchstart', unlockAudio);
-        console.log("Audio context unlocked");
+        console.log("Audio context unlocked (muted)");
     }
     document.addEventListener('click', unlockAudio);
     document.addEventListener('touchstart', unlockAudio);
@@ -1331,6 +1335,7 @@
             else if (operation === "dec" && comment != null) voteName = "Downvotevote mit Kommentar";
 
             showToast(`${voteName} erfolgreich abgegeben!`);
+            rateSound.play().catch(e => console.warn("Audio play failed:", e));
             currentVersion = data.version || currentVersion;
         } catch (e) {
             console.error('Vote-Fehler', e);
@@ -1365,6 +1370,7 @@
 
             textarea.value = '';
             showToast("Eintrag erfolgreich gespeichert.");
+            sendSound.play().catch(e => console.warn("Audio play failed:", e));
         } catch (e) {
             console.error('Diary-Fehler', e);
             showToast("Netzwerkfehler: Eintrag nicht gesendet.");
