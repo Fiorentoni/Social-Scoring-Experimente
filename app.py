@@ -277,6 +277,13 @@ def remove_ranking_category_from_state(state):
         person.pop("ranking_category", None)
         person.pop("privileges", None)
 
+def capture_current_ranks():
+    """Speichert die aktuellen Ränge aller Personen in last_rank."""
+    global current_state
+    sorted_list = sorted(current_state["persons"], key=lambda p: p["score"], reverse=True)
+    for index, person in enumerate(sorted_list):
+        person["last_rank"] = index + 1
+
 def bump_version() -> bool:
     global update_version
     global current_state
@@ -285,6 +292,10 @@ def bump_version() -> bool:
     update_version += 1
     current_state["version"] = update_version
     cut_vote_log()
+
+    # Achievements prüfen
+    check_achievements()
+
     remove_ranking_category_from_state(current_state)
 
     success = save_state(current_state)
@@ -296,6 +307,32 @@ def bump_version() -> bool:
         version_condition.notify_all()
     
     return success
+
+def check_achievements():
+    """Prüft und aktualisiert Achievements für alle Personen."""
+    global current_state
+    
+    # Ranking für Top 3 Check
+    sorted_list = sorted(current_state["persons"], key=lambda p: p["score"], reverse=True)
+
+    for person in current_state["persons"]:
+        achievements = person.setdefault("achievements", [])
+        
+        # Achievement: "Popular" (Score >= 4.0)
+        if person["score"] >= 4.0 and "popular" not in achievements:
+            achievements.append("popular")
+            
+        # Achievement: "Top 3" (Ist unter den besten 3)
+        is_top_3 = any(p["id"] == person["id"] for p in sorted_list[:3])
+        if is_top_3 and "top3" not in achievements:
+            achievements.append("top3")
+
+        # Achievement: "Veteran" (Hat mehr als 10 Votes erhalten)
+        votes_received = person.get("total_votes_received", 0)
+        if votes_received >= 10 and "veteran" not in achievements:
+            achievements.append("veteran")
+
+    # Sicherstellen, dass die Änderungen im current_state bleiben
 
 def current_user() -> Any | None:
     user = session.get("user")
@@ -634,8 +671,12 @@ def increase_score(person_id: int) -> tuple[Response, int] | tuple[Response, int
         if person["score"] == 5:
             return jsonify({"error": "Die Person hat schon den höchsten Score erreicht."}), 427
 
+        # Ranking sichern für Trend-Anzeige
+        capture_current_ranks()
+
         vote_weight = get_vote_weight(current_person)
         person["score"] = min(round(person["score"] + vote_weight, 2), 5)
+        person["total_votes_received"] = person.get("total_votes_received", 0) + 1
         record_vote(user, person_id, "inc", comment)  # Vote vermerken
         
         # Unmittelbar Counts aktualisieren für die Response
@@ -677,9 +718,13 @@ def decrease_score(person_id: int) -> tuple[Response, int] | tuple[Response, int
         if person["score"] == 0:
             return jsonify({"error": "Die Person hat schon den niedrigsten Score erreicht."}), 427
 
+        # Ranking sichern für Trend-Anzeige
+        capture_current_ranks()
+
         # nicht unter 0.0 scoren
         vote_weight = get_vote_weight(current_person)
         person["score"] = max(round(person["score"] - vote_weight, 2),0)
+        person["total_votes_received"] = person.get("total_votes_received", 0) + 1
         record_vote(user, person_id, "dec", comment)  # Vote vermerken
 
         # Unmittelbar Counts aktualisieren für die Response
@@ -823,6 +868,9 @@ def add_user():
         if any(p["name"] == name for p in current_state["persons"]):
             return jsonify({"error": "Benutzer existiert bereits"}), 400
         
+        # Ranking sichern für Trend-Anzeige
+        capture_current_ranks()
+
         new_id = max((p["id"] for p in current_state["persons"]), default=0) + 1
         new_person = {
             "id": new_id,
@@ -847,6 +895,9 @@ def delete_user(person_id):
         if not person:
             return jsonify({"error": "Benutzer nicht gefunden"}), 404
         
+        # Ranking sichern für Trend-Anzeige
+        capture_current_ranks()
+
         current_state["persons"] = [p for p in current_state["persons"] if p["id"] != person_id]
         if not bump_version():
             return jsonify({"error": "Fehler beim Speichern"}), 500

@@ -138,6 +138,15 @@
         }
         .vote-count-up { color: #4ade80; }
         .vote-count-down { color: #f87171; }
+        .trend-icon { font-size: 14px; margin-left: 5px; }
+        .trend-up { color: #4ade80; }
+        .trend-down { color: #f87171; }
+        .trend-steady { color: #9ca3af; }
+        .badge-container { display: flex; gap: 4px; margin-top: 5px; flex-wrap: wrap; justify-content: center; }
+        .badge { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); }
+        .badge-popular { background: #f59e0b; }
+        .badge-top3 { background: #10b981; }
+        .badge-veteran { background: #3b82f6; }
         .profile-score-container {
             display: flex;
             align-items: center;
@@ -539,6 +548,7 @@
                     </div>
                 </div>
             </div>
+            <div id="userBadgeContainer" class="badge-container"></div>
             <div id="votesContainer"></div>
             <button class="btn btn-send" id="moreVotesButton" onclick="showNextVotes()">Noch X weitere Kommentare (max. 30)</button>
             <p></p>
@@ -682,6 +692,27 @@
     let voteLevel = 1;
     let voteLog;
     let remainingVotes;
+    let notificationPermission = "default";
+
+    // Benachrichtigungen anfordern
+    if ("Notification" in window) {
+        notificationPermission = Notification.permission;
+        if (notificationPermission === "default") {
+            Notification.requestPermission().then(permission => {
+                notificationPermission = permission;
+            });
+        }
+    }
+
+    function showNotification(title, body) {
+        if (notificationPermission === "granted") {
+            try {
+                new Notification(title, { body: body });
+            } catch (e) {
+                console.log("Notification error:", e);
+            }
+        }
+    }
 
     // Foto-Upload & Drag-Crop Logik
     const photoInput = document.getElementById('photoInput');
@@ -992,7 +1023,20 @@
                 else scoreIcon = '<i class="fa-solid fa-face-sad-cry" style="color: #5e636e; margin-right: 4px;"></i>';
             }
 
-            scoreSpan.innerHTML = scoreIcon + Number(person.score).toFixed(2);
+            // Trend-Anzeige
+            let trendIcon = "";
+            if (person.last_rank) {
+                const currentRank = persons.indexOf(person) + 1;
+                if (currentRank < person.last_rank) {
+                    trendIcon = '<span class="trend-icon trend-up" title="Aufgestiegen!"><i class="fa-solid fa-arrow-up"></i></span>';
+                } else if (currentRank > person.last_rank) {
+                    trendIcon = '<span class="trend-icon trend-down" title="Abgestiegen"><i class="fa-solid fa-arrow-down"></i></span>';
+                } else {
+                    trendIcon = '<span class="trend-icon trend-steady" title="Stabil"><i class="fa-solid fa-arrow-right"></i></span>';
+                }
+            }
+
+            scoreSpan.innerHTML = scoreIcon + Number(person.score).toFixed(2) + trendIcon;
             tdScore.appendChild(scoreSpan);
 
             // Gesperrte Buttons finden und ausgrauen
@@ -1051,6 +1095,8 @@
                 // 24h Vote Counter für das Profil aktualisieren
                 const userVoteCounter = document.getElementById('userVoteCounter');
                 const recentVoteContainer = document.getElementById('recentVoteContainer');
+                const userBadgeContainer = document.getElementById('userBadgeContainer');
+                
                 userVoteCounter.innerHTML = '';
                 if (person.recent_ups > 0 || person.recent_downs > 0) {
                     recentVoteContainer.style.display = 'flex';
@@ -1068,6 +1114,19 @@
                     }
                 } else {
                     recentVoteContainer.style.display = 'none';
+                }
+
+                // Badges für das Profil aktualisieren
+                userBadgeContainer.innerHTML = '';
+                if (person.achievements && person.achievements.length > 0) {
+                    person.achievements.forEach(ach => {
+                        const badge = document.createElement('span');
+                        badge.className = `badge badge-${ach}`;
+                        if (ach === 'popular') { badge.textContent = 'Beliebt'; badge.title = 'Score über 4.0'; }
+                        if (ach === 'top3') { badge.textContent = 'Elite'; badge.title = 'Top 3 Ranking'; }
+                        if (ach === 'veteran') { badge.textContent = 'Veteran'; badge.title = 'Mehr als 10 Votes erhalten'; }
+                        userBadgeContainer.appendChild(badge);
+                    });
                 }
 
                 buttonPlusDisabled = true;
@@ -1405,6 +1464,18 @@
             if (data.changed) {
                 currentVersion = data.version || currentVersion;
                 renderPersons(data.persons, data.plusCooldowns, data.minusCooldowns || [], [], []);
+                
+                // Prüfen auf eigenen Score-Change für Benachrichtigung
+                const myPerson = data.persons.find(p => p.name === '{{ display_name }}');
+                if (myPerson) {
+                    if (lastOwnScore !== null && myPerson.score !== lastOwnScore) {
+                        const diff = (myPerson.score - lastOwnScore).toFixed(2);
+                        const icon = diff > 0 ? "📈" : "📉";
+                        showNotification("Score Update", `${icon} Dein Score hat sich um ${diff} geändert! Neuer Stand: ${myPerson.score.toFixed(2)}`);
+                    }
+                    lastOwnScore = myPerson.score;
+                }
+
                 voteLog = data.own_vote_log;
                 renderVoteLog(voteLog, voteLevel || [], voteLevel);
             } else {
