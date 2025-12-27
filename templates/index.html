@@ -145,8 +145,13 @@
         .badge-container { display: flex; gap: 4px; margin-top: 5px; flex-wrap: wrap; justify-content: center; }
         .badge { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); }
         .badge-popular { background: #f59e0b; }
-        .badge-top3 { background: #10b981; }
         .badge-veteran { background: #3b82f6; }
+        .badge-hater { background: #ef4444; }
+        .badge-nice { background: #10b981; }
+        .badge-sycophant { background: #ec4899; }
+        .badge-critic { background: #8b5cf6; }
+        .badge-against_stream { background: #6b7280; }
+        .badge-invisible { background: #94a3b8; }
         .profile-score-container {
             display: flex;
             align-items: center;
@@ -1031,8 +1036,6 @@
                     trendIcon = '<span class="trend-icon trend-up" title="Aufgestiegen!"><i class="fa-solid fa-arrow-up"></i></span>';
                 } else if (currentRank > person.last_rank) {
                     trendIcon = '<span class="trend-icon trend-down" title="Abgestiegen"><i class="fa-solid fa-arrow-down"></i></span>';
-                } else {
-                    trendIcon = '<span class="trend-icon trend-steady" title="Stabil"><i class="fa-solid fa-arrow-right"></i></span>';
                 }
             }
 
@@ -1123,8 +1126,13 @@
                         const badge = document.createElement('span');
                         badge.className = `badge badge-${ach}`;
                         if (ach === 'popular') { badge.textContent = 'Beliebt'; badge.title = 'Score über 4.0'; }
-                        if (ach === 'top3') { badge.textContent = 'Elite'; badge.title = 'Top 3 Ranking'; }
-                        if (ach === 'veteran') { badge.textContent = 'Veteran'; badge.title = 'Mehr als 10 Votes erhalten'; }
+                        if (ach === 'veteran') { badge.textContent = 'Veteran'; badge.title = 'Mehr als 20 Votes abgegeben'; }
+                        if (ach === 'hater') { badge.textContent = 'Hater'; badge.title = '30% mehr Downvotes als Upvotes gegeben'; }
+                        if (ach === 'nice') { badge.textContent = 'Nett'; badge.title = '30% mehr Upvotes als Downvotes gegeben'; }
+                        if (ach === 'sycophant') { badge.textContent = 'Schleimer'; badge.title = '30% mehr Upvotes mit Kommentar als Downvotes gegeben'; }
+                        if (ach === 'critic') { badge.textContent = 'Kritiker'; badge.title = '30% mehr Downvotes mit Kommentar als Upvotes gegeben'; }
+                        if (ach === 'against_stream') { badge.textContent = 'Gegen den Strom'; badge.title = 'Hat am wenigsten gevotet'; }
+                        if (ach === 'invisible') { badge.textContent = 'Unsichtbar'; badge.title = 'Hat die wenigsten Votes erhalten'; }
                         userBadgeContainer.appendChild(badge);
                     });
                 }

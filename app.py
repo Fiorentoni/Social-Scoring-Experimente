@@ -277,14 +277,13 @@ def remove_ranking_category_from_state(state):
         person.pop("ranking_category", None)
         person.pop("privileges", None)
 
-def capture_current_ranks():
-    """Speichert die aktuellen Ränge aller Personen in last_rank."""
+def get_current_ranks():
+    """Gibt ein Mapping von person_id zu aktuellem Rang zurück."""
     global current_state
     sorted_list = sorted(current_state["persons"], key=lambda p: p["score"], reverse=True)
-    for index, person in enumerate(sorted_list):
-        person["last_rank"] = index + 1
+    return {person["id"]: index + 1 for index, person in enumerate(sorted_list)}
 
-def bump_version() -> bool:
+def bump_version(previous_ranks=None) -> bool:
     global update_version
     global current_state
 
@@ -292,6 +291,15 @@ def bump_version() -> bool:
     update_version += 1
     current_state["version"] = update_version
     cut_vote_log()
+
+    # Ranking-Trends aktualisieren, falls previous_ranks übergeben wurden
+    if previous_ranks:
+        sorted_list = sorted(current_state["persons"], key=lambda p: p["score"], reverse=True)
+        for index, person in enumerate(sorted_list):
+            current_rank = index + 1
+            old_rank = previous_ranks.get(person["id"])
+            if old_rank is not None and old_rank != current_rank:
+                person["last_rank"] = old_rank
 
     # Achievements prüfen
     check_achievements()
@@ -312,27 +320,62 @@ def check_achievements():
     """Prüft und aktualisiert Achievements für alle Personen."""
     global current_state
     
-    # Ranking für Top 3 Check
-    sorted_list = sorted(current_state["persons"], key=lambda p: p["score"], reverse=True)
+    # Ranking für Vergleiche
+    persons = current_state["persons"]
+    if not persons:
+        return
 
-    for person in current_state["persons"]:
-        achievements = person.setdefault("achievements", [])
+    # "Gegen den Strom" - Wer am wenigsten votet
+    # "Unsichtbar" - Wer die wenigsten Votes erhalten hat
+    min_given = min((p.get("total_votes_given", 0) for p in persons), default=0)
+    min_received = min((p.get("total_votes_received", 0) for p in persons), default=0)
+
+    for person in persons:
+        achievements = [] # Wir bauen die Liste jedes Mal neu auf, um veraltete Badges zu entfernen
         
         # Achievement: "Popular" (Score >= 4.0)
-        if person["score"] >= 4.0 and "popular" not in achievements:
+        if person["score"] >= 4.0:
             achievements.append("popular")
             
-        # Achievement: "Top 3" (Ist unter den besten 3)
-        is_top_3 = any(p["id"] == person["id"] for p in sorted_list[:3])
-        if is_top_3 and "top3" not in achievements:
-            achievements.append("top3")
-
-        # Achievement: "Veteran" (Hat mehr als 10 Votes erhalten)
-        votes_received = person.get("total_votes_received", 0)
-        if votes_received >= 10 and "veteran" not in achievements:
+        # Achievement: "Veteran" (Hat mehr als 20x gevoted)
+        votes_given = person.get("total_votes_given", 0)
+        if votes_given >= 20:
             achievements.append("veteran")
 
-    # Sicherstellen, dass die Änderungen im current_state bleiben
+        # Achievements, die auf abgegebenen Votes basieren (erst ab 10 gegebenen Votes)
+        ups_given = person.get("total_ups_given", 0)
+        downs_given = person.get("total_downs_given", 0)
+        
+        if votes_given >= 10:
+            # "Hater" (30% mehr Downvotes als Upvotes gegeben)
+            if downs_given > ups_given * 1.3 and downs_given > 0:
+                achievements.append("hater")
+                
+            # "Nett" (30% mehr Upvotes als Downvotes)
+            if ups_given > downs_given * 1.3 and ups_given > 0:
+                achievements.append("nice")
+
+            ups_comment = person.get("total_ups_with_comment_given", 0)
+            downs_comment = person.get("total_downs_with_comment_given", 0)
+            
+            # "Schleimer" (30% mehr Upvotes mit Kommentar)
+            if ups_comment > downs_comment * 1.3 and ups_comment > 0:
+                achievements.append("sycophant")
+                
+            # "Kritiker" (30% mehr Downvotes mit Kommentar)
+            if downs_comment > ups_comment * 1.3 and downs_comment > 0:
+                achievements.append("critic")
+            
+            # "Gegen den Strom" (am wenigsten gevotet)
+            # Nur vergeben, wenn die Person min_given hat UND min_given >= 10 ist
+            if votes_given == min_given and min_given >= 10:
+                achievements.append("against_stream")
+            
+        # "Unsichtbar" (wenigste Votes bekommen)
+        if person.get("total_votes_received", 0) == min_received:
+            achievements.append("invisible")
+
+        person["achievements"] = achievements
 
 def current_user() -> Any | None:
     user = session.get("user")
@@ -635,11 +678,26 @@ def record_vote(user: str, person_id: int, operation: str, comment: str) -> None
     """
     global current_state
 
+    # Globales Log für die Anzeige (limitierte Größe)
     vote_log = current_state.setdefault("vote_log", {})
     vote_log_per_person = vote_log.setdefault(str(person_id), {})
     vote_log_per_person_for_user = vote_log_per_person.setdefault(str(user), {})
     vote_log_per_person_for_user[operation] = {"timestamp": convert_to_iso_zulu(get_utc_now()),
                                                "comment": comment}
+    
+    # Statistiken für Achievements erfassen (abgegebene Votes)
+    voter = next((p for p in current_state["persons"] if p["name"] == user), None)
+    if voter:
+        if operation == "inc":
+            voter["total_ups_given"] = voter.get("total_ups_given", 0) + 1
+            if comment and comment.strip():
+                voter["total_ups_with_comment_given"] = voter.get("total_ups_with_comment_given", 0) + 1
+        elif operation == "dec":
+            voter["total_downs_given"] = voter.get("total_downs_given", 0) + 1
+            if comment and comment.strip():
+                voter["total_downs_with_comment_given"] = voter.get("total_downs_with_comment_given", 0) + 1
+        
+        voter["total_votes_given"] = voter.get("total_votes_given", 0) + 1
 
 @app.route("/api/persons/<int:person_id>/inc", methods=["POST"])
 def increase_score(person_id: int) -> tuple[Response, int] | tuple[Response, int] | bool | Response:
@@ -672,7 +730,7 @@ def increase_score(person_id: int) -> tuple[Response, int] | tuple[Response, int
             return jsonify({"error": "Die Person hat schon den höchsten Score erreicht."}), 427
 
         # Ranking sichern für Trend-Anzeige
-        capture_current_ranks()
+        prev_ranks = get_current_ranks()
 
         vote_weight = get_vote_weight(current_person)
         person["score"] = min(round(person["score"] + vote_weight, 2), 5)
@@ -684,7 +742,7 @@ def increase_score(person_id: int) -> tuple[Response, int] | tuple[Response, int
         person["recent_ups"] = ups
         person["recent_downs"] = downs
 
-        if not bump_version():
+        if not bump_version(prev_ranks):
             return jsonify({"error": "Konflikt beim Speichern. Bitte lade die Seite neu."}), 409
         return jsonify({"version": update_version, "person": person})
 
@@ -719,7 +777,7 @@ def decrease_score(person_id: int) -> tuple[Response, int] | tuple[Response, int
             return jsonify({"error": "Die Person hat schon den niedrigsten Score erreicht."}), 427
 
         # Ranking sichern für Trend-Anzeige
-        capture_current_ranks()
+        prev_ranks = get_current_ranks()
 
         # nicht unter 0.0 scoren
         vote_weight = get_vote_weight(current_person)
@@ -732,7 +790,7 @@ def decrease_score(person_id: int) -> tuple[Response, int] | tuple[Response, int
         person["recent_ups"] = ups
         person["recent_downs"] = downs
 
-        if not bump_version():
+        if not bump_version(prev_ranks):
             return jsonify({"error": "Fehler - Konflikt beim Speichern. Bitte lade die Seite neu."}), 409
         return jsonify({"version": update_version, "person": person})
 
@@ -869,7 +927,7 @@ def add_user():
             return jsonify({"error": "Benutzer existiert bereits"}), 400
         
         # Ranking sichern für Trend-Anzeige
-        capture_current_ranks()
+        prev_ranks = get_current_ranks()
 
         new_id = max((p["id"] for p in current_state["persons"]), default=0) + 1
         new_person = {
@@ -880,7 +938,7 @@ def add_user():
             "score": STARTING_SCORE
         }
         current_state["persons"].append(new_person)
-        if not bump_version():
+        if not bump_version(prev_ranks):
             return jsonify({"error": "Fehler beim Speichern"}), 500
             
     return jsonify({"success": True, "person": {"id": new_id, "name": name, "score": STARTING_SCORE}})
@@ -896,10 +954,10 @@ def delete_user(person_id):
             return jsonify({"error": "Benutzer nicht gefunden"}), 404
         
         # Ranking sichern für Trend-Anzeige
-        capture_current_ranks()
+        prev_ranks = get_current_ranks()
 
         current_state["persons"] = [p for p in current_state["persons"] if p["id"] != person_id]
-        if not bump_version():
+        if not bump_version(prev_ranks):
             return jsonify({"error": "Fehler beim Speichern"}), 500
             
     return jsonify({"success": True})
@@ -944,7 +1002,12 @@ def update_user():
         if new_name is None and new_password is None:
             return jsonify({"error": "Keine Änderungen angegeben"}), 400
 
-        if not bump_version():
+        # Ranking sichern für Trend-Anzeige (Name könnte Ranking beeinflussen?)
+        # Eigentlich nur Score Änderungen relevant, aber falls wir später nach Namen sortieren...
+        # Hier sicherheitshalber auch prev_ranks übergeben
+        prev_ranks = get_current_ranks()
+
+        if not bump_version(prev_ranks):
             return jsonify({"error": "Fehler beim Speichern"}), 500
             
     return jsonify({"success": True})
