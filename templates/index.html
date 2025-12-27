@@ -112,6 +112,8 @@
         }
         .row {
             display: grid; grid-template-columns: 50px 72px 1fr auto auto; align-items: center; font-size: 30px; position: relative; gap: 10px;
+            min-height: 60px;
+            height: auto;
         }
         .person-avatar {
             width: 39px; height: 39px; border-radius: 50%; background: #dbeafe;
@@ -194,6 +196,9 @@
         }
         .score {
             font-variant-numeric: tabular-nums; font-weight: 600;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
         }
         .btn {
             border: none; border-radius: 10px; padding: 8px 20px; font-size: 18px; font-weight: 700;
@@ -333,16 +338,21 @@
         @media (max-width: 900px) {
             .container { grid-template-columns: 1fr; padding: 12px; }
             .row { 
-                grid-template-columns: 40px 50px 1fr 60px; 
+                grid-template-columns: 40px 50px minmax(100px, 1fr) 60px; 
+                grid-template-rows: auto auto;
                 font-size: 18px; 
                 gap: 8px;
-                overflow: hidden;
+                min-height: auto;
+                padding-top: 10px;
+                padding-bottom: 10px;
+                height: auto;
             }
             .row > *:nth-child(5) { display: none; } /* Die 5. Spalte (Zeitraum/Details) auf Mobile ausblenden */
             .person-avatar { width: 32px; height: 32px; }
             .btn { padding: 6px 12px; font-size: 14px; margin: 2px; }
             .actions { 
                 grid-column: 1 / -1; 
+                grid-row: 2;
                 justify-content: center; 
                 margin-top: 8px; 
                 border-top: 1px dashed rgba(255,255,255,0.2);
@@ -926,6 +936,8 @@
 
             // Name-Zelle
             const tdName = document.createElement('td');
+            tdName.style.overflowWrap = 'break-word';
+            tdName.style.minWidth = '100px';
             tdName.textContent = person.name;
             if ('{{ logged_in_user }}' === 'admin' && person.name !== 'admin') {
                 // Bearbeiten Button
