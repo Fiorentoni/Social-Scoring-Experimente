@@ -111,9 +111,10 @@
             padding: 10px; border-bottom: 1px solid var(--border); vertical-align: middle;
         }
         .row {
-            display: grid; grid-template-columns: 50px 72px 1fr auto auto; align-items: center; font-size: 30px; position: relative; gap: 10px;
+            display: grid; grid-template-columns: 30px 30px 150px 120px 100px auto; align-items: center; font-size: 30px; position: relative; gap: 20px;
             min-height: 60px;
             height: auto;
+            padding: 0 10px;
         }
         .person-avatar {
             width: 39px; height: 39px; border-radius: 50%; background: #dbeafe;
@@ -354,16 +355,17 @@
         @media (max-width: 900px) {
             .container { grid-template-columns: 1fr; padding: 12px; }
             .row { 
-                grid-template-columns: 40px 50px minmax(100px, 1fr) 60px; 
+                grid-template-columns: 30px 40px 40px 1fr auto; 
                 grid-template-rows: auto auto;
                 font-size: 18px; 
-                gap: 8px;
+                gap: 15px;
                 min-height: auto;
-                padding-top: 10px;
-                padding-bottom: 10px;
+                padding: 10px;
                 height: auto;
             }
-            .row > *:nth-child(5) { display: none; } /* Die 5. Spalte (Zeitraum/Details) auf Mobile ausblenden */
+            .row > td.privileges { padding: 0; margin: 0; }
+            /* .row > *:nth-child(5) { display: none; } */ /* Entfernt, damit Score mobil sichtbar bleibt */
+            /* .row > *:nth-child(2) { display: none; } */ /* Privileges wieder eingeblendet */
             .person-avatar { width: 32px; height: 32px; }
             .btn { padding: 6px 12px; font-size: 14px; margin: 2px; }
             .actions { 
@@ -576,6 +578,7 @@
             <thead>
             <tr class="row">
                 <th>Info</th>
+                <th style="width:0; padding:0; margin:0;"></th>
                 <th>Avatar</th>
                 <th>Name</th>
                 <th>Score</th>
@@ -1125,14 +1128,62 @@
                     person.achievements.forEach(ach => {
                         const badge = document.createElement('span');
                         badge.className = `badge badge-${ach}`;
-                        if (ach === 'popular') { badge.textContent = 'Beliebt'; badge.title = 'Score über 4.0'; }
-                        if (ach === 'veteran') { badge.textContent = 'Veteran'; badge.title = 'Mehr als 20 Votes abgegeben'; }
-                        if (ach === 'hater') { badge.textContent = 'Hater'; badge.title = '30% mehr Downvotes als Upvotes gegeben'; }
-                        if (ach === 'nice') { badge.textContent = 'Nett'; badge.title = '30% mehr Upvotes als Downvotes gegeben'; }
-                        if (ach === 'sycophant') { badge.textContent = 'Schleimer'; badge.title = '30% mehr Upvotes mit Kommentar als Downvotes gegeben'; }
-                        if (ach === 'critic') { badge.textContent = 'Kritiker'; badge.title = '30% mehr Downvotes mit Kommentar als Upvotes gegeben'; }
-                        if (ach === 'against_stream') { badge.textContent = 'Gegen den Strom'; badge.title = 'Hat am wenigsten gevotet'; }
-                        if (ach === 'invisible') { badge.textContent = 'Unsichtbar'; badge.title = 'Hat die wenigsten Votes erhalten'; }
+                        let icon = '';
+                        let text = '';
+                        let tooltip = '';
+
+                        if (ach === 'popular') { 
+                            icon = '<i class="fa-solid fa-fire"></i> ';
+                            text = 'Beliebt'; 
+                            tooltip = 'Score über 4.0'; 
+                        }
+                        if (ach === 'veteran') { 
+                            icon = '<i class="fa-solid fa-medal"></i> ';
+                            text = 'Veteran'; 
+                            tooltip = 'Mehr als 20 Votes abgegeben'; 
+                        }
+                        if (ach === 'hater') { 
+                            icon = '<i class="fa-solid fa-face-angry"></i> ';
+                            text = 'Hater'; 
+                            tooltip = '30% mehr Downvotes als Upvotes gegeben (ab 10 abgegebenen Votes)'; 
+                        }
+                        if (ach === 'nice') { 
+                            icon = '<i class="fa-solid fa-face-smile-beam"></i> ';
+                            text = 'Nett'; 
+                            tooltip = '30% mehr Upvotes als Downvotes gegeben (ab 10 abgegebenen Votes)'; 
+                        }
+                        if (ach === 'sycophant') { 
+                            icon = '<i class="fa-solid fa-face-grin-hearts"></i> ';
+                            text = 'Schleimer'; 
+                            tooltip = '30% mehr Upvotes mit Kommentar als Downvotes gegeben (ab 10 abgegebenen Votes)'; 
+                        }
+                        if (ach === 'critic') { 
+                            icon = '<i class="fa-solid fa-magnifying-glass-chart"></i> ';
+                            text = 'Kritiker'; 
+                            tooltip = '30% mehr Downvotes mit Kommentar als Upvotes gegeben (ab 10 abgegebenen Votes)'; 
+                        }
+                        if (ach === 'against_stream') { 
+                            icon = '<i class="fa-solid fa-fish"></i> ';
+                            text = 'Gegen den Strom'; 
+                            tooltip = 'Hat am wenigsten gevotet (ab 10 abgegebenen Votes)'; 
+                        }
+                        if (ach === 'invisible') { 
+                            icon = '<i class="fa-solid fa-ghost"></i> ';
+                            text = 'Unsichtbar'; 
+                            tooltip = 'Hat die wenigsten Votes erhalten'; 
+                        }
+                        
+                        badge.innerHTML = icon + text;
+                        badge.title = tooltip;
+                        
+                        // Mobile Tooltip-Unterstützung
+                        badge.addEventListener('click', (e) => {
+                            if (window.innerWidth <= 900) {
+                                showToast(tooltip);
+                                e.stopPropagation();
+                            }
+                        });
+                        
                         userBadgeContainer.appendChild(badge);
                     });
                 }
@@ -1251,6 +1302,7 @@
             btnMinus.appendChild(textNode4);
             btnMinus.appendChild(icon4);
 
+            tdActions.className = 'actions';
             tdActions.appendChild(btnPlus);
             tdActions.appendChild(btnPlusMessage);
             tdActions.appendChild(btnMinusMessage);
@@ -1452,7 +1504,7 @@
 
             textarea.value = '';
             showToast("Eintrag erfolgreich gespeichert.");
-            sendSound.play().catch(e => console.warn("Audio play failed:", e));
+            // sendSound.play().catch(e => console.warn("Audio play failed:", e));
         } catch (e) {
             console.error('Diary-Fehler', e);
             showToast("Netzwerkfehler: Eintrag nicht gesendet.");
